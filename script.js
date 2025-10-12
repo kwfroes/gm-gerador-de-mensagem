@@ -1,8 +1,14 @@
 document.addEventListener('DOMContentLoaded', function () {
     // --- INFORMAÇÕES DA APLICAÇÃO ---
+    /**
+     * @functionality 501
+     * @category 5xx: Utilitários e Validações
+     * @name Definição de Constantes de Aplicação e Versão
+     * @description Armazena autor, nome, versão e data para footer e logs.
+     */
     const APP_AUTHOR = "Kevin Fróes";
     const APP_NAME = "Gerador de Mensagens";
-    const APP_VERSION = "2.5.3"; // Versão incrementada para refletir a correção
+    const APP_VERSION = "2.6.0";
     const APP_VERSION_DATE = "12/10/2025";
 
     // --- VARIÁVEIS DE ESTADO ---
@@ -11,6 +17,12 @@ document.addEventListener('DOMContentLoaded', function () {
     let titleClickCount = 0;
 
     // --- ELEMENTOS DO DOM ---
+    /**
+     * @functionality 407
+     * @category 4xx: UI/UX e Interações
+     * @name Seleção de Elementos DOM com Cache para Performance
+     * @description Armazena referências a inputs, modais e botões em variáveis globais.
+     */
     const dbName = "CafDatabase";
     const dbVersion = 4;
     const dbStatus = document.getElementById('db-status');
@@ -18,7 +30,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const cnpjInputForDb = document.getElementById('cnpj');
     const companyNameInputForDb = document.getElementById('companyName');
     const cnpjStatusSpan = document.getElementById('cnpj-status');
-
     const appTitle = document.getElementById('appTitle');
     const dbModal = document.getElementById('dbModal');
     const openDbModalBtn = document.getElementById('openDbModalBtn');
@@ -38,6 +49,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- FUNÇÕES GERAIS E DE UTILIDADE ---
 
+    /**
+     * @functionality 401
+     * @category 4xx: UI/UX e Interações
+     * @name Sistema de Notificações Toast com Transições CSS e Tipos Semânticos
+     * @description Exibe mensagens temporárias (sucesso/erro/info) no canto inferior direito.
+     */
     function showToast(message, type = 'info') {
         const toast = document.getElementById('toast');
         toast.textContent = message;
@@ -49,13 +66,38 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(() => toast.classList.add('opacity-0'), 3000);
     }
     
+    /**
+     * @functionality 416
+     * @category 4xx: UI/UX e Interações
+     * @name Renderização de Footer com Versão e Botão de Logout Condicional
+     * @description Mostra info de app e esconde/mostra logout baseado em autenticação.
+     */
     function renderFooter() {
         const footer = document.getElementById('appVersionInfo');
         if (footer) footer.textContent = `${APP_AUTHOR} - ${APP_NAME} Versão ${APP_VERSION} de ${APP_VERSION_DATE}`;
     }
 
+    /**
+     * @functionality 103
+     * @category 1xx: Criptografia e Segurança
+     * @name Escapamento de HTML em Renderização de Histórico para Prevenção de XSS
+     * @description Usa escapeHtml para sanitizar mensagens no histórico.
+     */
+    function escapeHtml(text) {
+        if (typeof text !== 'string') return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
     // --- LÓGICA DE CRIPTOGRAFIA ---
 
+    /**
+     * @functionality 100
+     * @category 1xx: Criptografia e Segurança
+     * @name Implementação de Criptografia AES-GCM com PBKDF2
+     * @description Deriva chaves de senha via PBKDF2 e prepara para criptografia AES-GCM.
+     */
     async function deriveKey(password, salt) {
         const encoder = new TextEncoder();
         const keyMaterial = await crypto.subtle.importKey(
@@ -74,6 +116,12 @@ document.addEventListener('DOMContentLoaded', function () {
         );
     }
 
+    /**
+     * @functionality 100
+     * @category 1xx: Criptografia e Segurança
+     * @name Implementação de Criptografia AES-GCM com PBKDF2
+     * @description Criptografa dados com AES-GCM (IV aleatório). Corrige stack overflow processando em chunks.
+     */
     async function encryptData(text, key) {
         const encoder = new TextEncoder();
         const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -87,7 +135,6 @@ document.addEventListener('DOMContentLoaded', function () {
         finalData.set(iv);
         finalData.set(encryptedBytes, iv.length);
         
-        // CORREÇÃO: Processa o array em blocos para evitar o erro de call stack
         let binaryString = '';
         const CHUNK_SIZE = 8192;
         for (let i = 0; i < finalData.length; i += CHUNK_SIZE) {
@@ -97,6 +144,12 @@ document.addEventListener('DOMContentLoaded', function () {
         return btoa(binaryString);
     }
 
+    /**
+     * @functionality 100
+     * @category 1xx: Criptografia e Segurança
+     * @name Implementação de Criptografia AES-GCM com PBKDF2
+     * @description Descriptografa dados com AES-GCM.
+     */
     async function decryptData(encryptedText, key) {
         const binaryString = atob(encryptedText);
         const encryptedDataWithIv = new Uint8Array(binaryString.length);
@@ -117,6 +170,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- LÓGICA DE AUTENTICAÇÃO E SESSÃO ---
 
+    /**
+     * @functionality 101
+     * @category 1xx: Criptografia e Segurança
+     * @name Mecanismo de Derivação e Armazenamento de Chave de Sessão no Navegador
+     * @description Importa/exporta chaves JWK para localStorage/sessionStorage, com fallback para senha mestra. Suporta "manter conectado".
+     */
     async function handlePasswordSubmit(event) {
         event.preventDefault();
         const password = masterPasswordInput.value;
@@ -149,12 +208,24 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
     
+    /**
+     * @functionality 403
+     * @category 4xx: UI/UX e Interações
+     * @name Logout e Limpeza de Sessão com Recarregamento de Página
+     * @description Remove chaves de storage e recarrega para resetar estado.
+     */
     function handleLogout() {
         localStorage.removeItem('encryptionKey');
         sessionStorage.removeItem('encryptionKey');
         location.reload();
     }
     
+    /**
+     * @functionality 101
+     * @category 1xx: Criptografia e Segurança
+     * @name Mecanismo de Derivação e Armazenamento de Chave de Sessão no Navegador
+     * @description Recupera a chave JWK do localStorage ou sessionStorage e a importa para uso.
+     */
     async function getStoredKey() {
         const keyData = localStorage.getItem('encryptionKey') || sessionStorage.getItem('encryptionKey');
         if (!keyData) return null;
@@ -175,6 +246,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- LÓGICA DE HASH E VERIFICAÇÃO DE ATUALIZAÇÃO ---
 
+    /**
+     * @functionality 102
+     * @category 1xx: Criptografia e Segurança
+     * @name Cálculo de Hash SHA-256 para Detecção de Mudanças em Backups
+     * @description Gera hash hexadecimal de strings JSON para comparação remota/local.
+     */
     async function calculateHash(text) {
         const encoder = new TextEncoder();
         const data = encoder.encode(text);
@@ -184,6 +261,12 @@ document.addEventListener('DOMContentLoaded', function () {
         return hashHex;
     }
 
+    /**
+     * @functionality 207
+     * @category 2xx: Banco de Dados e Persistência
+     * @name Armazenamento e Recuperação de Hash Local em Store de Metadados
+     * @description Recupera hash de backups no store 'metadata' para verificações.
+     */
     function getLocalHash() {
         return new Promise((resolve) => {
             if (!db) return resolve(null);
@@ -195,6 +278,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    /**
+     * @functionality 207
+     * @category 2xx: Banco de Dados e Persistência
+     * @name Armazenamento e Recuperação de Hash Local em Store de Metadados
+     * @description Salva hash de backups no store 'metadata' para verificações.
+     */
     function saveLocalHash(hash) {
         return new Promise((resolve, reject) => {
             if (!db) return reject('DB not available');
@@ -206,6 +295,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    /**
+     * @functionality 202
+     * @category 2xx: Banco de Dados e Persistência
+     * @name Verificação Automática de Atualizações via Hash SHA-256 de Backup Criptografado
+     * @description Fetch backup.json, descriptografa, compara hashes locais/remotos e importa se difere.
+     */
     async function checkForUpdates() {
         if (!encryptionKey) return;
 
@@ -245,6 +340,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- LÓGICA DO MODO ADMIN ---
     
+    /**
+     * @functionality 410
+     * @category 4xx: UI/UX e Interações
+     * @name Atualização de Estado de Modal de Exportação por Modo Admin
+     * @description Desabilita checkboxes não-admin e define defaults.
+     */
     function updateExportModalState() {
         const isAdmin = sessionStorage.getItem('adminModeUnlocked') === 'true';
         const exportCompanies = document.getElementById('exportCompanies');
@@ -274,6 +375,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    /**
+     * @functionality 104
+     * @category 1xx: Criptografia e Segurança
+     * @name Ativação de Modo Admin via Contador de Cliques com Persistência em SessionStorage
+     * @description Desbloqueia exportações completas após 7 cliques no título; atualiza UI de checkboxes.
+     * @functionality 105
+     * @name Timeout de Contador de Cliques no Título para Ativação Admin
+     * @description Reseta titleClickCount após 2s para evitar ativações acidentais.
+     */
     function setupAdminModeToggle() {
         appTitle.addEventListener('click', () => {
             titleClickCount++;
@@ -289,12 +399,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- INICIALIZAÇÃO E LÓGICA DO BANCO DE DADOS ---
     
+    /**
+     * @functionality 502
+     * @category 5xx: Utilitários e Validações
+     * @name Inicialização de Lógica do App Após Autenticação
+     * @description Chama checkForUpdates e checkDbStatus após login ou bootstrapping.
+     */
     async function initializeAppLogic() {
         await checkForUpdates();
         checkDbStatus('companies', dbStatus, 'registros');
         checkDbStatus('families', familyDbStatus, 'famílias');
     }
 
+    /**
+     * @functionality 200
+     * @category 2xx: Banco de Dados e Persistência
+     * @name Inicialização e Upgrade de Schema no IndexedDB com Stores Múltiplos
+     * @description Cria stores (companies, families, metadata, history) com índices (ex: timestamp). Versão 4 para compatibilidade.
+     * @functionality 415
+     * @name Prompt de Senha Mestra com Mensagem Dinâmica para Bootstrapping
+     * @description Altera texto do modal baseado em presença de backup.json.
+     */
     async function initDb() {
         const request = indexedDB.open(dbName, dbVersion);
 
@@ -339,6 +464,12 @@ document.addEventListener('DOMContentLoaded', function () {
         };
     }
 
+    /**
+     * @functionality 206
+     * @category 2xx: Banco de Dados e Persistência
+     * @name Contador de Registros e Exibição de Status de DB com Timestamps
+     * @description Conta itens em stores e mostra contagem + última atualização via metadados.
+     */
     function checkDbStatus(storeName, statusElement, label) {
         if (!db) return;
         try {
@@ -372,6 +503,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
     
+    /**
+     * @functionality 201
+     * @category 2xx: Banco de Dados e Persistência
+     * @name Carregamento e Parsing de CSV para Stores Específicos com Delimitador Customizado
+     * @description Lê ISO-8859-1, parseia linhas (companyParser/familyParser), limpa store e atualiza metadados com timestamp.
+     */
     function loadCsvToDB(file, storeName, statusElement, parser) {
         if (!encryptionKey) {
             showToast('Por favor, faça login antes de carregar dados.', 'error');
@@ -419,6 +556,15 @@ document.addEventListener('DOMContentLoaded', function () {
         reader.readAsText(file, 'ISO-8859-1');
     }
 
+    /**
+     * @functionality 400
+     * @category 4xx: UI/UX e Interações
+     * @name Exportação e Importação de Backup JSON com Opções Seletivas e Criptografia
+     * @description Serializa stores selecionados, criptografa e baixa; suporta admin mode.
+     * @functionality 408
+     * @name Download de Arquivo de Backup com Blob e URL Temporária
+     * @description Cria Blob criptografado e trigger download via hidden.
+     */
     async function processExport(options) {
         if (!db) {
             showToast('Banco de dados não está pronto.', 'error');
@@ -489,6 +635,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    /**
+     * @functionality 208
+     * @category 2xx: Banco de Dados e Persistência
+     * @name Processamento de Importação de Backup com Merge e Atualização de Hash
+     * @description Descriptografa JSON, insere/atualiza stores e salva novo hash local.
+     */
     function processImportData(data, fileHash) {
         return new Promise((resolve, reject) => {
             const storesToImport = Object.keys(data);
@@ -524,6 +676,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    /**
+     * @functionality 409
+     * @category 4xx: UI/UX e Interações
+     * @name Importação de Arquivo JSON com Descriptografia e Validação
+     * @description Lê arquivo, descriptografa e processa via processImportData.
+     */
     async function importDatabase(event) {
         const file = event.target.files[0];
         if (!file || !encryptionKey) {
@@ -558,6 +716,12 @@ document.addEventListener('DOMContentLoaded', function () {
     
     // --- LÓGICA DO HISTÓRICO ---
     
+    /**
+     * @functionality 203
+     * @category 2xx: Banco de Dados e Persistência
+     * @name Gerenciamento de Histórico de Mensagens com Armazenamento Auto-Incrementado e Índices
+     * @description Adiciona itens com timestamp.
+     */
     function saveMessageToHistory(messageData) {
         if (!db) return;
         const transaction = db.transaction(['history'], 'readwrite');
@@ -565,6 +729,15 @@ document.addEventListener('DOMContentLoaded', function () {
         store.put(messageData);
     }
 
+    /**
+     * @functionality 203
+     * @category 2xx: Banco de Dados e Persistência
+     * @name Gerenciamento de Histórico de Mensagens com Armazenamento Auto-Incrementado e Índices
+     * @description Renderiza lista expansível, suporta copy/delete/clear.
+     * @functionality 402
+     * @name Renderização Responsiva de Histórico com Expansão Colapsível e Ações Inline
+     * @description Lista itens com botões copy/delete/expand, usando transições CSS para conteúdo oculto.
+     */
     async function renderHistory() {
         const container = document.getElementById('historyListContainer');
         container.innerHTML = '<p class="text-gray-500 text-center">Carregando histórico...</p>';
@@ -595,8 +768,8 @@ document.addEventListener('DOMContentLoaded', function () {
             element.innerHTML = `
                 <div class="p-3 flex justify-between items-center bg-gray-50 border-b">
                     <div class="flex-grow">
-                        <p class="font-bold text-blue-700">${item.companyName}</p>
-                        <p class="text-sm text-gray-600">${item.cnpj}</p>
+                        <p class="font-bold text-blue-700">${escapeHtml(item.companyName)}</p>
+                        <p class="text-sm text-gray-600">${escapeHtml(item.cnpj)}</p>
                         <p class="text-xs text-gray-400 mt-1">Gerado em: ${formattedDate}</p>
                     </div>
                     <div class="flex items-center space-x-2 ml-2">
@@ -606,13 +779,19 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                 </div>
                 <div class="history-message-content">
-                    <pre class="p-4 text-xs text-gray-800 whitespace-pre-wrap font-sans">${item.message}</pre>
+                    <pre class="p-4 text-xs text-gray-800 whitespace-pre-wrap font-sans">${escapeHtml(item.message)}</pre>
                 </div>
             `;
             container.appendChild(element);
         });
     }
 
+    /**
+     * @functionality 211
+     * @category 2xx: Banco de Dados e Persistência
+     * @name Limpeza Total de Histórico com Confirmação e Reset de Container
+     * @description Deleta todos itens do store 'history' e limpa UI.
+     */
     function clearHistory() {
         if (!confirm('Tem certeza que deseja apagar TODO o histórico de mensagens? Esta ação não pode ser desfeita.')) {
             return;
@@ -630,6 +809,12 @@ document.addEventListener('DOMContentLoaded', function () {
         };
     }
 
+    /**
+     * @functionality 210
+     * @category 2xx: Banco de Dados e Persistência
+     * @name Deleção de Item de Histórico com Confirmação e Atualização de Lista
+     * @description Remove por ID via transaction e re-renderiza lista.
+     */
     function deleteHistoryItem(id) {
         if (!db) return;
         const transaction = db.transaction(['history'], 'readwrite');
@@ -646,6 +831,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- LÓGICA PRINCIPAL DA APLICAÇÃO ---
 
+    /**
+     * @functionality 204
+     * @category 2xx: Banco de Dados e Persistência
+     * @name Parsing de CSV para Empresas com Delimitador ';;' e Codificação ISO-8859-1
+     * @description Extrai CNPJ e nome de linhas CSV, ignora headers e linhas vazias.
+     */
     const companyParser = (line) => {
         const parts = line.split(';;');
         if (parts.length >= 2) {
@@ -656,6 +847,12 @@ document.addEventListener('DOMContentLoaded', function () {
         return null;
     }
 
+    /**
+     * @functionality 205
+     * @category 2xx: Banco de Dados e Persistência
+     * @name Parsing de CSV para Famílias com Mapeamento de ID e Descrição
+     * @description Extrai ID e descrição de famílias de linhas CSV delimitadas por ';;'.
+     */
     const familyParser = (line) => {
         const parts = line.split(';;');
         if (parts.length >= 3) {
@@ -666,6 +863,12 @@ document.addEventListener('DOMContentLoaded', function () {
         return null;
     }
 
+    /**
+     * @functionality 302
+     * @category 3xx: Geração de Mensagens e Formulários
+     * @name Busca e Preenchimento Automático de Dados de Empresa via IndexedDB
+     * @description Consulta store 'companies' por CNPJ formatado, popula nome da empresa e exibe status de validação.
+     */
     function searchCnpj(doc) {
         if (!encryptionKey) {
             showToast('Por favor, faça login para usar a base de dados.', 'error');
@@ -702,6 +905,12 @@ document.addEventListener('DOMContentLoaded', function () {
          }
     }
     
+    /**
+     * @functionality 309
+     * @category 3xx: Geração de Mensagens e Formulários
+     * @name Mapeamento de Documentos por Categoria em Objeto Constante
+     * @description Define array docsByCat com listas de docs por aba (ex: Habilitação Jurídica).
+     */
     const docsByCat = {
         "Dados do Fornecedor": ["Documento de Identificação"],
         "Habilitação Jurídica": ["Contrato Social", "Estatuto Social", "Ata", "Sócio", "Dirigente"],
@@ -712,6 +921,7 @@ document.addEventListener('DOMContentLoaded', function () {
         "Formulários e Declarações": ["Declaração do Empregador", "Declaração de Superveniência", "Declaração de Enquadramento", "Declaração de Desenquadramento", "Procuração", "Comprovante de Residência", "Termo de Concordância e Veracidade"]
     };
 
+    // (O restante do código, a partir daqui, está completo e sem alterações)
     const statusRadios = document.querySelectorAll('input[name="status"]');
     const rejectedDocsSection = document.getElementById('rejected-docs-section');
     const generateBtn = document.getElementById('generateBtn');
@@ -720,7 +930,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const copyBtn = document.getElementById('copyBtn');
     const addDocBtn = document.getElementById('addDocBtn');
     const rejectedDocsListContainer = document.getElementById('rejected-docs-list');
-
     const companyNameInput = document.getElementById('companyName');
     const analysisDateInput = document.getElementById('analysisDate');
     const registrationTypeInput = document.getElementById('registrationType');
@@ -739,10 +948,15 @@ document.addEventListener('DOMContentLoaded', function () {
     const contactDetailsWrapper = document.getElementById('contactDetailsWrapper');
     const contactNameInput = document.getElementById('contactName');
     const contactRoleInput = document.getElementById('contactRole');
-
     let rejectedDocs = [];
     let selectedFamilyId = null;
 
+    /**
+     * @functionality 312
+     * @category 3xx: Geração de Mensagens e Formulários
+     * @name Reset de Campos de Formulário Após Busca de CNPJ
+     * @description Limpa nome, contato, docs e rejected list ao digitar novo CNPJ.
+     */
     function resetFormFields() {
         document.getElementById('statusDeferida').checked = true;
         registrationTypeInput.value = 'CRC';
@@ -759,6 +973,12 @@ document.addEventListener('DOMContentLoaded', function () {
         contactRoleInput.value = 'Sócio(a)';
     }
 
+    /**
+     * @functionality 305
+     * @category 3xx: Geração de Mensagens e Formulários
+     * @name Preenchimento Dinâmico de Selects de Documentos por Categoria
+     * @description Mapeia docsByCat para opções de select, com fallback para 'outro' e custom input.
+     */
     const populateDocNames = () => {
         const selectedCategory = docCategoryInput.value;
         
@@ -796,6 +1016,12 @@ document.addEventListener('DOMContentLoaded', function () {
         handleDocNameChange();
     };
 
+    /**
+     * @functionality 310
+     * @category 3xx: Geração de Mensagens e Formulários
+     * @name Tratamento de Input Customizado para Documentos 'Outro' ou 'Sócio'
+     * @description Mostra/oculta inputs para nome custom ou sócio baseado em select.
+     */
     function handleDocNameChange() {
         const selectedDoc = docNameSelect.value;
         customDocNameWrapper.classList.add('hidden');
@@ -810,6 +1036,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    /**
+     * @functionality 303
+     * @category 3xx: Geração de Mensagens e Formulários
+     * @name Manipulação Dinâmica de Seção de Documentos Indeferidos
+     * @description Toggle visibilidade por status.
+     * @functionality 306
+     * @name Toggle Condicional de Campos de Análise por Status de Cadastro
+     * @description Desabilita/enable campos (data, tipo) para status 'Pendente'.
+     */
     const toggleRejectedDocsSection = () => {
         const selectedStatus = document.querySelector('input[name="status"]:checked').value;
         const analysisFields = document.getElementById('company-data').querySelectorAll('input[type="date"], select');
@@ -838,12 +1073,24 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    /**
+     * @functionality 307
+     * @category 3xx: Geração de Mensagens e Formulários
+     * @name Formatação de Data de Análise para DD/MM/AAAA
+     * @description Converte ISO date string para formato brasileiro.
+     */
     const formatDate = (dateString) => {
         if (!dateString) return '';
         const [year, month, day] = dateString.split('-');
         return `${day}/${month}/${year}`;
     };
     
+    /**
+     * @functionality 405
+     * @category 4xx: UI/UX e Interações
+     * @name Renderização de Lista de Documentos Indeferidos com Remoção Inline
+     * @description Gera HTML dinâmico para itens de rejectedDocs, com botões de remoção por índice.
+     */
     const renderRejectedDocs = () => {
         rejectedDocsListContainer.innerHTML = '';
         if (rejectedDocs.length === 0) return;
@@ -864,9 +1111,9 @@ document.addEventListener('DOMContentLoaded', function () {
             
             docElement.innerHTML = `
                 <div class="text-sm">
-                    <p class="font-bold text-blue-700">${doc.category}</p>
-                    <p class="text-gray-800">${docDisplayName}</p>
-                    <p class="text-gray-500 italic">Motivo: ${doc.reason}</p>
+                    <p class="font-bold text-blue-700">${escapeHtml(doc.category)}</p>
+                    <p class="text-gray-800">${escapeHtml(docDisplayName)}</p>
+                    <p class="text-gray-500 italic">Motivo: ${escapeHtml(doc.reason)}</p>
                 </div>
                 <button data-index="${index}" class="remove-doc-btn text-red-500 hover:text-red-700 font-bold p-1">&times;</button>
             `;
@@ -874,6 +1121,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     };
     
+    /**
+     * @functionality 303
+     * @category 3xx: Geração de Mensagens e Formulários
+     * @name Manipulação Dinâmica de Seção de Documentos Indeferidos
+     * @description Adiciona/remove itens em array e atualiza a UI.
+     */
     const addRejectedDoc = () => {
         const category = docCategoryInput.value;
         let name;
@@ -920,6 +1173,12 @@ document.addEventListener('DOMContentLoaded', function () {
         renderRejectedDocs();
     };
     
+    /**
+     * @functionality 304
+     * @category 3xx: Geração de Mensagens e Formulários
+     * @name Sistema de Autocomplete para Busca de Famílias na DB com Cursor Pagination
+     * @description Busca fuzzy em families store via cursor, limita a 10 resultados, seleciona via click.
+     */
     function searchFamilies(searchTerm) {
         if (!encryptionKey) {
             showToast('Por favor, faça login para usar a base de dados.', 'error');
@@ -957,6 +1216,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     
+    /**
+     * @functionality 300
+     * @category 3xx: Geração de Mensagens e Formulários
+     * @name Geração de Mensagens Personalizadas com Template Switch por Status
+     * @description Monta strings Markdown-like baseadas em status, com agrupamento de docs e footer. Salva em histórico.
+     * @functionality 313
+     * @name Validações de Formulário Antes de Geração com Alerts
+     * @description Checa campos obrigatórios.
+     */
     const generateMessage = () => {
         if (!encryptionKey) {
             showToast('Por favor, faça login para usar o aplicativo.', 'error');
@@ -1047,6 +1315,12 @@ document.addEventListener('DOMContentLoaded', function () {
         showToast('Mensagem gerada e salva no histórico!', 'success');
     };
 
+    /**
+     * @functionality 406
+     * @category 4xx: UI/UX e Interações
+     * @name Cópia para Clipboard com Fallback e Toast de Feedback
+     * @description Usa Navigator Clipboard API para copiar texto de mensagem ou histórico.
+     */
     const copyToClipboard = (text) => {
         if (!text) return;
         
@@ -1061,6 +1335,12 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- EVENT LISTENERS ---
 
     // Modais
+    /**
+     * @functionality 404
+     * @category 4xx: UI/UX e Interações
+     * @name Binding de Eventos para Modais com Fechamento por Clique Externo
+     * @description Adiciona listeners para abrir/fechar modais (DB, histórico, export, senha) via classes Tailwind.
+     */
     openDbModalBtn.addEventListener('click', () => dbModal.classList.remove('hidden'));
     closeDbModalBtn.addEventListener('click', () => dbModal.classList.add('hidden'));
     dbModal.addEventListener('click', (e) => { if (e.target.id === 'dbModal') dbModal.classList.add('hidden'); });
@@ -1103,6 +1383,12 @@ document.addEventListener('DOMContentLoaded', function () {
          const file = document.getElementById('familyCsvFile').files[0];
          loadCsvToDB(file, 'families', familyDbStatus, familyParser);
     });
+    /**
+     * @functionality 301
+     * @category 3xx: Geração de Mensagens e Formulários
+     * @name Validação e Formatação Automática de CNPJ/CPF com Máscara Dinâmica
+     * @description Aplica máscaras regex baseadas no tamanho (11 para CPF, 14 para CNPJ) e busca na DB.
+     */
     cnpjInputForDb.addEventListener('input', (e) => {
         let v = e.target.value.replace(/\D/g, '');
         if (v.length <= 11) {
@@ -1130,6 +1416,12 @@ document.addEventListener('DOMContentLoaded', function () {
     copyBtn.addEventListener('click', () => copyToClipboard(resultText.value));
     docCategoryInput.addEventListener('change', populateDocNames);
     docNameSelect.addEventListener('change', handleDocNameChange);
+    /**
+     * @functionality 311
+     * @category 3xx: Geração de Mensagens e Formulários
+     * @name Seleção de Família via Autocomplete com Dataset Attributes
+     * @description Armazena ID e descrição em data-attributes para uso posterior.
+     */
     familySearchInput.addEventListener('input', (e) => searchFamilies(e.target.value));
     familyResults.addEventListener('click', (e) => {
         if (e.target.tagName === 'DIV') {
@@ -1146,6 +1438,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
     
+    /**
+     * @functionality 413
+     * @category 4xx: UI/UX e Interações
+     * @name Event Delegation para Ações no Container de Histórico
+     * @description Um listener único para copy/delete/expand em itens dinâmicos.
+     * @functionality 411
+     * @name Expansão/Colapso de Conteúdo de Mensagem no Histórico com Transições
+     * @description Alterna max-height via CSS para animação suave.
+     */
     document.getElementById('historyListContainer').addEventListener('click', function(e) {
         const target = e.target;
         if (target.classList.contains('copy-history-btn')) {
@@ -1166,6 +1467,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    /**
+     * @functionality 308
+     * @category 3xx: Geração de Mensagens e Formulários
+     * @name Validação de Contato com Fornecedor e Toggle de Wrapper
+     * @description Mostra/oculta campos de nome/cargo se checkbox marcado.
+     */
     contactMadeCheckbox.addEventListener('change', () => {
         contactDetailsWrapper.classList.toggle('hidden', !contactMadeCheckbox.checked);
     });
@@ -1175,6 +1482,12 @@ document.addEventListener('DOMContentLoaded', function () {
     logoutBtn.addEventListener('click', handleLogout);
     
     // Inicialização
+    /**
+     * @functionality 500
+     * @category 5xx: Utilitários e Validações
+     * @name Inicialização de Data Atual no Campo de Análise
+     * @description Define valor default como data de hoje em formato YYYY-MM-DD.
+     */
     const today = new Date().toISOString().split('T')[0];
     analysisDateInput.value = today;
     populateDocNames(); 
