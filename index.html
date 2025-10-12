@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Mensagens CAF</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 sm:p-6 md:p-8 max-w-4xl">
+        <header class="text-center mb-8">
+            <h1 id="appTitle" class="text-3xl font-bold text-blue-700 cursor-pointer" title="Clique para uma surpresa...">Gerador de Mensagens - CAF</h1>
+            <p class="text-gray-600 mt-2">Preencha os campos abaixo para gerar a mensagem.</p>
+        </header>
+
+        <main class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg space-y-8">
+            <section id="company-data">
+                <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-gray-700">1. Dados da Solicitação</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="cnpj" class="block text-sm font-medium text-gray-700 mb-1">CNPJ / CPF</label>
+                        <div class="relative">
+                             <input type="text" id="cnpj" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="Digite o CNPJ ou CPF" maxlength="18">
+                             <span id="cnpj-status" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold"></span>
+                        </div>
+                    </div>
+                     <div>
+                        <label for="companyName" class="block text-sm font-medium text-gray-700 mb-1">Razão Social / Nome</label>
+                        <input type="text" id="companyName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="Preenchido automaticamente...">
+                    </div>
+                    <div>
+                        <label for="analysisDate" class="block text-sm font-medium text-gray-700 mb-1">Data da Análise</label>
+                        <input type="date" id="analysisDate" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                    </div>
+                    <div>
+                        <label for="registrationType" class="block text-sm font-medium text-gray-700 mb-1">Tipo de Cadastro</label>
+                        <select id="registrationType" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                            <option>CRC</option>
+                            <option>CRS</option>
+                            <option>Candidato</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+            <section id="status-selection">
+                <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-gray-700">2. Status da Análise</h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                    <div class="flex items-center">
+                        <input type="radio" id="statusDeferida" name="status" value="Deferida" class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500" checked>
+                        <label for="statusDeferida" class="ml-3 block text-sm font-medium text-gray-700">Deferida</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="radio" id="statusDeferidaParcial" name="status" value="Deferida Parcial" class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+                        <label for="statusDeferidaParcial" class="ml-3 block text-sm font-medium text-gray-700">Deferida Parcial</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="radio" id="statusIndeferida" name="status" value="Indeferida" class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+                        <label for="statusIndeferida" class="ml-3 block text-sm font-medium text-gray-700">Indeferida</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="radio" id="statusPendenteEnvio" name="status" value="Pendente de Envio" class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+                        <label for="statusPendenteEnvio" class="ml-3 block text-sm font-medium text-gray-700">Pendente de Envio</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="radio" id="statusPendenteTermo" name="status" value="Pendente do Termo" class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+                        <label for="statusPendenteTermo" class="ml-3 block text-sm font-medium text-gray-700">Pendente do Termo</label>
+                    </div>
+                </div>
+            </section>
+            <section id="contact-section">
+                <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-gray-700">3. Contato com Fornecedor</h2>
+                <div class="flex items-center">
+                    <input type="checkbox" id="contactMade" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                    <label for="contactMade" class="ml-3 block text-sm font-medium text-gray-700">Houve contato com o fornecedor?</label>
+                </div>
+                <div id="contactDetailsWrapper" class="hidden mt-4 grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-4 rounded-lg">
+                    <div>
+                        <label for="contactName" class="block text-sm font-medium text-gray-700 mb-1">Nome do Contato</label>
+                        <input type="text" id="contactName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="Ex: Joelson Miranda">
+                    </div>
+                    <div>
+                        <label for="contactRole" class="block text-sm font-medium text-gray-700 mb-1">Cargo</label>
+                        <select id="contactRole" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                            <option>Dirigente</option>
+                            <option>Diretor(a)</option>
+                            <option selected>Sócio(a)</option>
+                            <option>Representante Legal</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+            <section id="rejected-docs-section" class="hidden">
+                <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-gray-700">4. Documentos Indeferidos</h2>
+                <div class="bg-gray-50 p-6 rounded-lg space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="docCategory" class="block text-sm font-medium text-gray-700 mb-1">Categoria (Aba)</label>
+                            <select id="docCategory" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                                <option>Dados do Fornecedor</option>
+                                <option>Habilitação Jurídica</option>
+                                <option>Família</option>
+                                <option>Qualificação Técnica</option>
+                                <option selected>Regularidade Fiscal e Trabalhista</option>
+                                <option>Qualificação Econômico-Financeira</option>
+                                <option>Formulários e Declarações</option>
+                            </select>
+                        </div>
+                        <div id="docNameWrapper">
+                            <label for="docName" class="block text-sm font-medium text-gray-700 mb-1">Nome do Documento</label>
+                            <select id="docName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"></select>
+                        </div>
+                        <div id="familyAutocompleteWrapper" class="hidden">
+                            <label for="familySearchInput" class="block text-sm font-medium text-gray-700 mb-1">Buscar Família</label>
+                            <input type="text" id="familySearchInput" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="Digite para buscar a família...">
+                            <div id="familyResults"></div>
+                        </div>
+                    </div>
+                    <div id="customDocNameWrapper" class="hidden">
+                        <label for="customDocName" class="block text-sm font-medium text-gray-700 mb-1">Especifique o nome do documento</label>
+                        <input type="text" id="customDocName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="Nome do documento personalizado">
+                    </div>
+                    <div id="socioNameWrapper" class="hidden">
+                        <label for="socioName" class="block text-sm font-medium text-gray-700 mb-1">Nome do Sócio</label>
+                        <input type="text" id="socioName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="Digite o nome completo do sócio">
+                    </div>
+                    <div>
+                        <label for="rejectionReason" class="block text-sm font-medium text-gray-700 mb-1">Motivo do Indeferimento</label>
+                        <textarea id="rejectionReason" rows="3" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="Descreva o motivo..."></textarea>
+                    </div>
+                    <div class="text-right">
+                        <button id="addDocBtn" class="bg-blue-600 text-white font-semibold py-2 px-5 rounded-lg hover:bg-blue-700 transition transform hover:scale-105 shadow-md">
+                            Adicionar Documento
+                        </button>
+                    </div>
+                </div>
+                <div id="rejected-docs-list" class="mt-6 space-y-3"></div>
+            </section>
+            <div class="text-center pt-4">
+                <button id="generateBtn" class="bg-green-600 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-green-700 transition transform hover:scale-105 shadow-xl">
+                    Gerar Mensagem
+                </button>
+            </div>
+            <section id="result-section" class="hidden">
+                <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-gray-700">Mensagem Gerada</h2>
+                <div class="relative">
+                    <textarea id="resultText" readonly rows="15" class="w-full p-4 border bg-gray-50 border-gray-200 rounded-lg text-sm leading-relaxed whitespace-pre-wrap"></textarea>
+                     <button id="copyBtn" class="absolute top-3 right-3 bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-lg hover:bg-gray-300 transition text-xs">
+                        Copiar
+                    </button>
+                </div>
+            </section>
+             <div class="text-center pt-6 border-t mt-8 space-x-4">
+                <button id="openDbModalBtn" class="text-sm text-blue-600 hover:text-blue-800 font-semibold py-2 px-4 rounded-lg transition hover:bg-blue-50">
+                    Gerenciar Base de Dados
+                </button>
+                <button id="openHistoryModalBtn" class="text-sm text-blue-600 hover:text-blue-800 font-semibold py-2 px-4 rounded-lg transition hover:bg-blue-50">
+                    Ver Histórico de Mensagens
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <div id="dbModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-lg relative">
+            <button id="closeDbModalBtn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-3xl font-light leading-none">&times;</button>
+            <div id="dbModalContent" class="space-y-6">
+                <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-gray-700">Base de Dados</h2>
+                <section id="database-setup">
+                    <p class="text-sm text-gray-600 -mt-4">Carregue um arquivo CSV com os dados correspondentes (delimitador ';;').</p>
+                    <div class="bg-gray-50 p-4 rounded-lg space-y-3">
+                        <h3 class="text-lg font-semibold text-gray-800">CNPJs e CPFs</h3>
+                        <div>
+                            <label for="csvFile" class="block text-sm font-medium text-gray-700 mb-1">Arquivo CSV (CNPJs/CPFs)</label>
+                            <input type="file" id="csvFile" accept=".csv" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                        </div>
+                        <div class="text-right">
+                            <button id="loadCsvBtn" class="bg-blue-600 text-white font-semibold py-2 px-5 rounded-lg hover:bg-blue-700 transition shadow-md">
+                                Carregar CNPJs/CPFs
+                            </button>
+                        </div>
+                        <div id="db-status" class="text-sm font-medium text-center pt-2 min-h-[40px]"></div>
+                    </div>
+                </section>
+                <section id="family-database-setup">
+                    <div class="bg-gray-50 p-4 rounded-lg space-y-3">
+                        <h3 class="text-lg font-semibold text-gray-800">Famílias</h3>
+                        <div>
+                            <label for="familyCsvFile" class="block text-sm font-medium text-gray-700 mb-1">Arquivo CSV (Famílias)</label>
+                            <input type="file" id="familyCsvFile" accept=".csv" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                        </div>
+                        <div class="text-right">
+                            <button id="loadFamilyCsvBtn" class="bg-blue-600 text-white font-semibold py-2 px-5 rounded-lg hover:bg-blue-700 transition shadow-md">
+                                Carregar Famílias
+                            </button>
+                        </div>
+                        <div id="family-db-status" class="text-sm font-medium text-center pt-2 min-h-[40px]"></div>
+                    </div>
+                </section>
+                <section id="backup-restore-setup" class="mt-6">
+                    <div class="bg-gray-50 p-4 rounded-lg space-y-3">
+                        <h3 class="text-lg font-semibold text-gray-800">Backup e Restauração</h3>
+                        <p class="text-xs text-gray-500">Salve todos os dados em um arquivo ou restaure a partir de um backup.</p>
+                        <div class="flex justify-between items-center mt-2">
+                            <button id="exportDbBtn" class="bg-green-600 text-white font-semibold py-2 px-5 rounded-lg hover:bg-green-700 transition shadow-md">
+                                Exportar (Backup)
+                            </button>
+                            <div>
+                                <label for="importDbFile" id="importDbLabel" class="inline-block bg-blue-600 text-white font-semibold py-2 px-5 rounded-lg hover:bg-blue-700 transition shadow-md cursor-pointer">
+                                    Importar (Restaurar)
+                                </label>
+                                <input type="file" id="importDbFile" accept=".json" class="hidden">
+                            </div>
+                        </div>
+                         <span id="importStatus" class="text-center block text-sm text-blue-600 font-semibold mt-2"></span>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+    <div id="historyModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-3xl relative max-h-[90vh] flex flex-col">
+            <button id="closeHistoryModalBtn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-3xl font-light leading-none">&times;</button>
+            <div class="flex justify-between items-center border-b pb-2">
+                <h2 class="text-xl font-semibold text-gray-700">Histórico de Mensagens</h2>
+                <button id="clearHistoryBtn" class="text-sm text-red-500 hover:text-red-700 font-semibold py-1 px-3 rounded-lg transition hover:bg-red-50">
+                    Limpar Histórico
+                </button>
+            </div>
+            <div id="historyListContainer" class="overflow-y-auto space-y-3 mt-4 pr-2">
+                <p class="text-gray-500 text-center">Nenhum histórico encontrado.</p>
+            </div>
+        </div>
+    </div>
+    <div id="exportModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-md relative">
+            <h2 class="text-xl font-semibold mb-6 border-b pb-2 text-gray-700">Opções de Exportação</h2>
+            <div class="space-y-4">
+                <p class="text-sm text-gray-600">Selecione quais dados você deseja incluir no arquivo de backup.</p>
+                <label class="flex items-center p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <input type="checkbox" id="exportCompanies" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                    <span class="ml-3 block text-sm font-medium text-gray-700">CNPJs / CPFs</span>
+                </label>
+                <label class="flex items-center p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <input type="checkbox" id="exportFamilies" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                    <span class="ml-3 block text-sm font-medium text-gray-700">Famílias</span>
+                </label>
+                <label class="flex items-center p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <input type="checkbox" id="exportHistory" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                    <span class="ml-3 block text-sm font-medium text-gray-700">Histórico de Mensagens (Backup Pessoal)</span>
+                </label>
+            </div>
+            <div class="mt-8 flex justify-end space-x-4">
+                <button id="cancelExportBtn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-5 rounded-lg hover:bg-gray-300 transition">Cancelar</button>
+                <button id="confirmExportBtn" class="bg-blue-600 text-white font-semibold py-2 px-5 rounded-lg hover:bg-blue-700 transition shadow-md">Confirmar e Exportar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="passwordModal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 z-[100]">
+        <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-sm">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">Acesso à Base de Dados</h2>
+            <p id="passwordPromptMessage" class="text-sm text-gray-600 mb-6">Por favor, insira a senha mestra para descriptografar e carregar os dados.</p>
+            <form id="passwordForm">
+                <div class="space-y-4">
+                    <div>
+                        <label for="masterPassword" class="sr-only">Senha Mestra</label>
+                        <input type="password" id="masterPassword" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="Senha Mestra" required>
+                    </div>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="keepLoggedIn" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <span class="ml-3 block text-sm font-medium text-gray-700">Manter conectado neste navegador</span>
+                    </label>
+                </div>
+                <div class="mt-6">
+                    <button type="submit" id="submitPasswordBtn" class="w-full bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 transition shadow-md">Desbloquear</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-5 right-5 bg-black text-white py-2 px-5 rounded-lg shadow-xl opacity-0 transition-opacity duration-300 z-50"></div>
+    
+    <footer class="text-center text-xs text-gray-400 mt-8 pb-4">
+        <p id="appVersionInfo" class="inline-block"></p>
+        <button id="logoutBtn" class="hidden ml-4 text-red-500 hover:text-red-700 font-semibold transition">Sair</button>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
