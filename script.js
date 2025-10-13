@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     const APP_AUTHOR = "Kevin Fróes";
     const APP_NAME = "Gerador de Mensagens";
-    const APP_VERSION = "2.6.0";
+    const APP_VERSION = "2.7.0";
     const APP_VERSION_DATE = "12/10/2025";
 
     // --- VARIÁVEIS DE ESTADO ---
@@ -46,6 +46,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const keepLoggedInCheckbox = document.getElementById('keepLoggedIn');
     const passwordPromptMessage = document.getElementById('passwordPromptMessage');
     const logoutBtn = document.getElementById('logoutBtn');
+    const csvFileInput = document.getElementById('csvFileInput');
+    const loadCsvBtn = document.getElementById('loadCsvBtn');
+    const csvFileInputLabel = document.getElementById('csvFileInputLabel');
+    const familyCsvFileInput = document.getElementById('familyCsvFileInput');
+    const loadFamilyCsvBtn = document.getElementById('loadFamilyCsvBtn');
+    const familyCsvFileInputLabel = document.getElementById('familyCsvFileInputLabel')
 
     // --- FUNÇÕES GERAIS E DE UTILIDADE ---
 
@@ -340,41 +346,56 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- LÓGICA DO MODO ADMIN ---
     
-    /**
-     * @functionality 410
-     * @category 4xx: UI/UX e Interações
-     * @name Atualização de Estado de Modal de Exportação por Modo Admin
-     * @description Desabilita checkboxes não-admin e define defaults.
-     */
-    function updateExportModalState() {
-        const isAdmin = sessionStorage.getItem('adminModeUnlocked') === 'true';
-        const exportCompanies = document.getElementById('exportCompanies');
-        const exportFamilies = document.getElementById('exportFamilies');
-        const exportHistory = document.getElementById('exportHistory');
-
-        [exportCompanies, exportFamilies].forEach(checkbox => {
-            checkbox.disabled = !isAdmin;
-            const label = checkbox.closest('label');
-            if (isAdmin) {
-                label.classList.remove('opacity-50', 'cursor-not-allowed');
-                label.title = '';
-            } else {
-                label.classList.add('opacity-50', 'cursor-not-allowed');
-                label.title = 'Opção disponível apenas no Modo Admin.';
-            }
-        });
-        
+/**
+ * @functionality 410
+ * @name Atualização de Estado dos Controles de Admin
+ * @description Habilita/desabilita todas as funcionalidades de admin (exportação e upload de CSV)
+ */
+function updateAdminControlsState() {
+    const isAdmin = sessionStorage.getItem('adminModeUnlocked') === 'true';
+    
+    // Controles de Exportação
+    const exportCompanies = document.getElementById('exportCompanies');
+    const exportFamilies = document.getElementById('exportFamilies');
+    
+    [exportCompanies, exportFamilies].forEach(checkbox => {
+        checkbox.disabled = !isAdmin;
+        const label = checkbox.closest('label');
         if (isAdmin) {
-            exportCompanies.checked = true;
-            exportFamilies.checked = true;
-            exportHistory.checked = false;
+            label.classList.remove('opacity-50', 'cursor-not-allowed');
+            label.title = '';
         } else {
-            exportCompanies.checked = false;
-            exportFamilies.checked = false;
-            exportHistory.checked = true;
+            label.classList.add('opacity-50', 'cursor-not-allowed');
+            label.title = 'Opção disponível apenas no Modo Admin.';
         }
+    });
+    
+    if (isAdmin) {
+        exportCompanies.checked = true;
+        exportFamilies.checked = true;
+        document.getElementById('exportHistory').checked = false;
+    } else {
+        exportCompanies.checked = false;
+        exportFamilies.checked = false;
+        document.getElementById('exportHistory').checked = true;
     }
+    
+    // Controles de Upload de CSV
+    const csvControls = [
+        { input: csvFileInput, btn: loadCsvBtn, label: csvFileInputLabel },
+        { input: familyCsvFileInput, btn: loadFamilyCsvBtn, label: familyCsvFileInputLabel }
+    ];
 
+    csvControls.forEach(control => {
+        control.input.disabled = !isAdmin;
+        control.btn.disabled = !isAdmin;
+        if (isAdmin) {
+            [control.input, control.btn, control.label].forEach(el => el.classList.remove('opacity-50', 'cursor-not-allowed'));
+        } else {
+            [control.input, control.btn, control.label].forEach(el => el.classList.add('opacity-50', 'cursor-not-allowed'));
+        }
+    });
+    }
     /**
      * @functionality 104
      * @category 1xx: Criptografia e Segurança
@@ -390,7 +411,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (titleClickCount >= 7) {
                 sessionStorage.setItem('adminModeUnlocked', 'true');
                 showToast('Modo Admin Ativado!', 'success');
-                updateExportModalState();
+                updateAdminControlsState(); // Atualiza todos os controles de admin
                 titleClickCount = 0;
             }
             setTimeout(() => { titleClickCount = 0; }, 2000);
@@ -1353,7 +1374,7 @@ document.addEventListener('DOMContentLoaded', function () {
     historyModal.addEventListener('click', (e) => { if (e.target.id === 'historyModal') historyModal.classList.add('hidden'); });
 
     document.getElementById('exportDbBtn').addEventListener('click', () => {
-        updateExportModalState();
+        updateAdminControlsState();
         exportModal.classList.remove('hidden');
     });
     cancelExportBtn.addEventListener('click', () => {
@@ -1494,5 +1515,6 @@ document.addEventListener('DOMContentLoaded', function () {
     initDb();
     renderFooter();
     setupAdminModeToggle();
+    updateAdminControlsState(); // Define o estado inicial dos controles de admin
 
 });
