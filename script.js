@@ -1397,11 +1397,11 @@ function updateAdminControlsState() {
 
     // Banco de Dados e Histórico
     document.getElementById('loadCsvBtn').addEventListener('click', () => {
-         const file = document.getElementById('csvFile').files[0];
+         const file = document.getElementById('csvFileInput').files[0]; // <<< LINHA CORRIGIDA
          loadCsvToDB(file, 'companies', dbStatus, companyParser);
     });
     document.getElementById('loadFamilyCsvBtn').addEventListener('click', () => {
-         const file = document.getElementById('familyCsvFile').files[0];
+         const file = document.getElementById('familyCsvFileInput').files[0]; // <<< LINHA CORRIGIDA
          loadCsvToDB(file, 'families', familyDbStatus, familyParser);
     });
     /**
@@ -1516,5 +1516,6 @@ function updateAdminControlsState() {
     renderFooter();
     setupAdminModeToggle();
     updateAdminControlsState(); // Define o estado inicial dos controles de admin
+
 
 });
