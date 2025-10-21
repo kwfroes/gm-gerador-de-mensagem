@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     const APP_AUTHOR = "Kevin Fróes";
     const APP_NAME = "Gerador de Mensagens";
-    const APP_VERSION = "2.7.2";
+    const APP_VERSION = "2.8.0";
     const APP_VERSION_DATE = "20/10/2025";
 
     // --- VARIÁVEIS DE ESTADO ---
@@ -48,10 +48,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const logoutBtn = document.getElementById('logoutBtn');
     const csvFileInput = document.getElementById('csvFileInput');
     const loadCsvBtn = document.getElementById('loadCsvBtn');
+    const loginBtn = document.getElementById('loginBtn');
     const csvFileInputLabel = document.getElementById('csvFileInputLabel');
     const familyCsvFileInput = document.getElementById('familyCsvFileInput');
     const loadFamilyCsvBtn = document.getElementById('loadFamilyCsvBtn');
-    const familyCsvFileInputLabel = document.getElementById('familyCsvFileInputLabel')
+    const familyCsvFileInputLabel = document.getElementById('familyCsvFileInputLabel');
+    const historySearchCnpj = document.getElementById('historySearchCnpj');
+    const historyStartDate = document.getElementById('historyStartDate');
+    const historyEndDate = document.getElementById('historyEndDate');
+    const filterHistoryBtn = document.getElementById('filterHistoryBtn');
+    const clearHistoryFilterBtn = document.getElementById('clearHistoryFilterBtn');
 
     // --- FUNÇÕES GERAIS E DE UTILIDADE ---
 
@@ -206,6 +212,7 @@ document.addEventListener('DOMContentLoaded', function () {
             passwordModal.classList.add('hidden');
             masterPasswordInput.value = '';
             logoutBtn.classList.remove('hidden');
+            loginBtn.classList.add('hidden');
 
             initializeAppLogic();
 
@@ -461,22 +468,31 @@ function updateAdminControlsState() {
             encryptionKey = await getStoredKey();
 
             if (encryptionKey) {
+                // --- ESTÁ LOGADO ---
                 logoutBtn.classList.remove('hidden');
+                loginBtn.classList.add('hidden');
                 initializeAppLogic();
             } else {
+                // --- NÃO ESTÁ LOGADO ---
+                logoutBtn.classList.add('hidden');
+                loginBtn.classList.remove('hidden');
+                
+                // Prepara a mensagem do modal, mas não o abre
                 try {
                     const response = await fetch('backup.json');
                     if (response.ok) {
                         passwordPromptMessage.textContent = "Uma base de dados central foi encontrada. Por favor, insira a senha mestra para acessá-la.";
-                        passwordModal.classList.remove('hidden');
                     } else {
+                        passwordPromptMessage.textContent = "Por favor, insira a senha mestra para descriptografar e carregar os dados."; // Mensagem padrão
                         console.log("Nenhum backup central encontrado. Iniciando em modo de bootstrapping.");
-                        initializeAppLogic();
                     }
                 } catch (error) {
+                    passwordPromptMessage.textContent = "Por favor, insira a senha mestra para descriptografar e carregar os dados."; // Mensagem padrão
                     console.log("Não foi possível acessar o backup central. Iniciando em modo offline/bootstrapping.");
-                    initializeAppLogic();
                 }
+                
+                // Não chame initializeAppLogic() aqui, pois ele será chamado
+                // dentro de handlePasswordSubmit() após o login bem-sucedido.
             }
         };
 
@@ -759,52 +775,85 @@ function updateAdminControlsState() {
      * @name Renderização Responsiva de Histórico com Expansão Colapsível e Ações Inline
      * @description Lista itens com botões copy/delete/expand, usando transições CSS para conteúdo oculto.
      */
-    async function renderHistory() {
-        const container = document.getElementById('historyListContainer');
-        container.innerHTML = '<p class="text-gray-500 text-center">Carregando histórico...</p>';
-        if (!db) {
-            container.innerHTML = '<p class="text-red-500 text-center">Banco de dados não disponível.</p>';
-            return;
-        }
 
-        const transaction = db.transaction(['history'], 'readonly');
-        const store = transaction.objectStore('history');
-        const allRecords = await new Promise((resolve, reject) => {
-            const request = store.getAll();
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
+async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilter = '') {
+    const container = document.getElementById('historyListContainer');
+    container.innerHTML = '<p class="text-gray-500 text-center">Carregando histórico...</p>';
+    if (!db) {
+        container.innerHTML = '<p class="text-red-500 text-center">Banco de dados não disponível.</p>';
+        return;
+    }
+
+    const transaction = db.transaction(['history'], 'readonly');
+    const store = transaction.objectStore('history');
+    const allRecords = await new Promise((resolve, reject) => {
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+
+    // --- LÓGICA DE FILTRAGEM (NOVO) ---
+    let filteredRecords = allRecords;
+
+    // Filtro por CNPJ/CPF
+    if (cnpjFilter) {
+        const cleanedCnpjFilter = cnpjFilter.replace(/\D/g, '');
+        filteredRecords = filteredRecords.filter(item => {
+            const cleanedItemCnpj = item.cnpj.replace(/\D/g, '');
+            return cleanedItemCnpj.includes(cleanedCnpjFilter);
         });
+    }
 
-        if (allRecords.length === 0) {
-            container.innerHTML = '<p class="text-gray-500 text-center">Nenhum histórico encontrado.</p>';
-            return;
-        }
+    // Filtro por Data Inicial
+    if (startDateFilter) {
+        const parts = startDateFilter.split('-'); // Corrige o bug do fuso horário (YYYY-MM-DD)
+        const startDate = new Date(parts[0], parts[1] - 1, parts[2]); // Cria a data em fuso local
+        startDate.setHours(0, 0, 0, 0); // Considera o início do dia
+        filteredRecords = filteredRecords.filter(item => new Date(item.timestamp) >= startDate);
+    }
 
-        container.innerHTML = '';
-        allRecords.reverse().forEach(item => {
-            const date = new Date(item.timestamp);
-            const formattedDate = date.toLocaleString('pt-BR');
-            const element = document.createElement('div');
-            element.className = 'border rounded-lg bg-white shadow-sm overflow-hidden';
-            element.innerHTML = `
-                <div class="p-3 flex justify-between items-center bg-gray-50 border-b">
-                    <div class="flex-grow">
-                        <p class="font-bold text-blue-700">${escapeHtml(item.companyName)}</p>
-                        <p class="text-sm text-gray-600">${escapeHtml(item.cnpj)}</p>
-                        <p class="text-xs text-gray-400 mt-1">Gerado em: ${formattedDate}</p>
-                    </div>
-                    <div class="flex items-center space-x-2 ml-2">
-                        <button data-id="${item.id}" class="delete-history-btn text-red-500 hover:text-red-700 font-bold p-1 text-lg leading-none">&times;</button>
-                        <button data-message="${encodeURIComponent(item.message)}" class="copy-history-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-lg hover:bg-gray-300 transition text-xs">Copiar</button>
-                        <button class="expand-history-btn text-blue-600 font-semibold text-xs py-1 px-3">Expandir</button>
-                    </div>
+    // Filtro por Data Final
+    if (endDateFilter) {
+        const parts = endDateFilter.split('-'); // Corrige o bug do fuso horário (YYYY-MM-DD)
+        const endDate = new Date(parts[0], parts[1] - 1, parts[2]); // Cria a data em fuso local
+        endDate.setHours(23, 59, 59, 999); // Considera o fim do dia
+        filteredRecords = filteredRecords.filter(item => new Date(item.timestamp) <= endDate);
+    }
+
+    // --- FIM DA LÓGICA DE FILTRAGEM ---
+
+
+    if (filteredRecords.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-center">Nenhum registro encontrado para os filtros aplicados.</p>';
+        return;
+    }
+
+    container.innerHTML = '';
+    // Renderiza os registros JÁ FILTRADOS
+    filteredRecords.reverse().forEach(item => {
+        const date = new Date(item.timestamp);
+        const formattedDate = date.toLocaleString('pt-BR');
+        const element = document.createElement('div');
+        element.className = 'border rounded-lg bg-white shadow-sm overflow-hidden';
+        element.innerHTML = `
+            <div class="p-3 flex justify-between items-center bg-gray-50 border-b">
+                <div class="flex-grow">
+                    <p class="font-bold text-blue-700">${escapeHtml(item.companyName)}</p>
+                    <p class="text-sm text-gray-600">${escapeHtml(item.cnpj)}</p>
+                    <p class="text-xs text-gray-400 mt-1">Gerado em: ${formattedDate}</p>
                 </div>
-                <div class="history-message-content">
-                    <pre class="p-4 text-xs text-gray-800 whitespace-pre-wrap font-sans">${escapeHtml(item.message)}</pre>
+                <div class="flex items-center space-x-2 ml-2">
+                    <button data-id="${item.id}" class="delete-history-btn text-red-500 hover:text-red-700 font-bold p-1 text-lg leading-none">&times;</button>
+                    <button data-message="${encodeURIComponent(item.message)}" class="copy-history-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-lg hover:bg-gray-300 transition text-xs">Copiar</button>
+                    <button class="expand-history-btn text-blue-600 font-semibold text-xs py-1 px-3">Expandir</button>
                 </div>
-            `;
-            container.appendChild(element);
-        });
+            </div>
+            <div class="history-message-content" style="max-height: 0; transition: max-height 0.3s ease-out;">
+                <pre class="p-4 text-xs text-gray-800 whitespace-pre-wrap font-sans">${escapeHtml(item.message)}</pre>
+            </div>
+        `;
+        container.appendChild(element);
+    });
     }
 
     /**
@@ -1367,9 +1416,47 @@ function updateAdminControlsState() {
     dbModal.addEventListener('click', (e) => { if (e.target.id === 'dbModal') dbModal.classList.add('hidden'); });
     
     openHistoryModalBtn.addEventListener('click', () => {
-        historyModal.classList.remove('hidden');
-        renderHistory();
+    historyModal.classList.remove('hidden');
+    // Limpa os campos de filtro e renderiza a lista completa ao abrir
+    historySearchCnpj.value = '';
+    historyStartDate.value = '';
+    historyEndDate.value = '';
+    renderHistory();
     });
+
+    // Listener para o botão de filtrar
+    filterHistoryBtn.addEventListener('click', () => {
+    const cnpj = historySearchCnpj.value.trim();
+    const startDate = historyStartDate.value;
+    const endDate = historyEndDate.value;
+    renderHistory(cnpj, startDate, endDate);
+    });
+
+    // Listener para limpar os filtros
+    clearHistoryFilterBtn.addEventListener('click', () => {
+    historySearchCnpj.value = '';
+    historyStartDate.value = '';
+    historyEndDate.value = '';
+    renderHistory(); // Renderiza a lista completa novamente
+    });
+
+    // Ajusta o CNPJ no filtro de history
+    historySearchCnpj.addEventListener('input', (e) => {
+        let v = e.target.value.replace(/\D/g, ''); // Remove tudo que não é dígito
+        
+        if (v.length <= 11) { // Formato CPF
+            v = v.replace(/(\d{3})(\d)/, '$1.$2');
+            v = v.replace(/(\d{3})(\d)/, '$1.$2');
+            v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+        } else { // Formato CNPJ
+            v = v.replace(/^(\d{2})(\d)/, '$1.$2');
+            v = v.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+            v = v.replace(/\.(\d{3})(\d)/, '.$1/$2');
+            v = v.replace(/(\d{4})(\d)/, '$1-$2');
+        }
+        e.target.value = v;
+    });
+
     closeHistoryModalBtn.addEventListener('click', () => historyModal.classList.add('hidden'));
     historyModal.addEventListener('click', (e) => { if (e.target.id === 'historyModal') historyModal.classList.add('hidden'); });
 
@@ -1478,15 +1565,19 @@ function updateAdminControlsState() {
             deleteHistoryItem(id);
         } else if (target.classList.contains('expand-history-btn')) {
             const content = target.closest('.border').querySelector('.history-message-content');
-            if (content.style.maxHeight) {
-                content.style.maxHeight = null;
-                target.textContent = 'Expandir';
-            } else {
-                content.style.maxHeight = content.scrollHeight + "px";
-                target.textContent = 'Recolher';
-            }
+            
+        // Verifica se está recolhido (maxHeight é '0px', nulo ou vazio)
+        if (!content.style.maxHeight || content.style.maxHeight === '0px') {
+            // Se está recolhido, expande
+            content.style.maxHeight = content.scrollHeight + "px";
+            target.textContent = 'Recolher';
+        } else {
+            // Se está expandido, recolhe
+            content.style.maxHeight = null;
+            target.textContent = 'Expandir';
         }
-    });
+        }
+        });
 
     /**
      * @functionality 308
@@ -1499,6 +1590,10 @@ function updateAdminControlsState() {
     });
 
     // Event Listeners de Autenticação
+    loginBtn.addEventListener('click', () => {
+        passwordModal.classList.remove('hidden');
+        masterPasswordInput.focus();
+    });
     passwordForm.addEventListener('submit', handlePasswordSubmit);
     logoutBtn.addEventListener('click', handleLogout);
     
