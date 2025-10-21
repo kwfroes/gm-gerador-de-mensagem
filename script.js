@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     const APP_AUTHOR = "Kevin Fróes";
     const APP_NAME = "Gerador de Mensagens";
-    const APP_VERSION = "2.8.0";
+    const APP_VERSION = "2.8.1";
     const APP_VERSION_DATE = "20/10/2025";
 
     // --- VARIÁVEIS DE ESTADO ---
@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const familyDbStatus = document.getElementById('family-db-status');
     const cnpjInputForDb = document.getElementById('cnpj');
     const companyNameInputForDb = document.getElementById('companyName');
+    const companyNameResults = document.getElementById('companyNameResults');
     const cnpjStatusSpan = document.getElementById('cnpj-status');
     const appTitle = document.getElementById('appTitle');
     const dbModal = document.getElementById('dbModal');
@@ -100,6 +101,28 @@ document.addEventListener('DOMContentLoaded', function () {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    /**
+     * @functionality 503
+     * @category 5xx: Utilitários e Validações
+     * @name Formatação de Máscara Dinâmica de CNPJ/CPF
+     * @description Aplica máscara de CPF (11) ou CNPJ (14) a uma string de dígitos.
+     */
+    function formatDocument(v) {
+        v = v.replace(/\D/g, ''); // Remove tudo que não é dígito
+        
+        if (v.length <= 11) { // Formato CPF
+            v = v.replace(/(\d{3})(\d)/, '$1.$2');
+            v = v.replace(/(\d{3})(\d)/, '$1.$2');
+            v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+        } else { // Formato CNPJ
+            v = v.replace(/^(\d{2})(\d)/, '$1.$2');
+            v = v.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+            v = v.replace(/\.(\d{3})(\d)/, '.$1/$2');
+            v = v.replace(/(\d{4})(\d)/, '$1-$2');
+        }
+        return v;
     }
 
     // --- LÓGICA DE CRIPTOGRAFIA ---
@@ -940,6 +963,7 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
      * @description Consulta store 'companies' por CNPJ formatado, popula nome da empresa e exibe status de validação.
      */
     function searchCnpj(doc) {
+        companyNameResults.innerHTML = ''; //limpa lista de sugestões
         if (!encryptionKey) {
             showToast('Por favor, faça login para usar a base de dados.', 'error');
             return;
@@ -974,6 +998,59 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
              cnpjStatusSpan.className = 'text-red-600';
          }
     }
+
+    /**
+     * @functionality 302.5
+     * @category 3xx: Geração de Mensagens e Formulários
+     * @name Sistema de Autocomplete para Busca de Empresas por Razão Social
+     * @description Busca fuzzy (contains) em companies store via cursor, limita a 10 resultados.
+     */
+    function searchCompanyByName(searchTerm) {
+        if (!encryptionKey) return; // Não mostra toast, para não poluir
+        companyNameResults.innerHTML = '';
+        if (searchTerm.length < 5 || !db) return; // Limite de 6 caracteres
+
+        const transaction = db.transaction(['companies'], 'readonly');
+        const store = transaction.objectStore('companies');
+        const request = store.openCursor();
+        const results = [];
+        const lowerCaseSearchTerm = searchTerm.toLowerCase();
+
+        request.onsuccess = function(event) {
+            const cursor = event.target.result;
+            if (cursor) {
+                if (cursor.value.razaoSocial.toLowerCase().includes(lowerCaseSearchTerm)) {
+                    results.push(cursor.value);
+                }
+                if (results.length < 10) { // Limita a 10 resultados
+                    cursor.continue();
+                } else {
+                     displayCompanyNameResults(results); // Atingiu o limite
+                }
+            } else {
+                displayCompanyNameResults(results); // Fim do cursor
+            }
+        };
+    }
+
+    /**
+     * @functionality 302.6
+     * @category 3xx: Geração de Mensagens e Formulários
+     * @name Renderização de Resultados de Autocomplete de Empresa
+     * @description Preenche div com resultados clicáveis, armazenando dados em data-attributes.
+     */
+    function displayCompanyNameResults(results) {
+        companyNameResults.innerHTML = '';
+        results.forEach(company => {
+            const div = document.createElement('div');
+            // Estilização idêntica à de famílias (via CSS em index/style.css)
+            div.className = 'p-3 hover:bg-gray-100 cursor-pointer text-sm'; 
+            div.textContent = company.razaoSocial;
+            div.dataset.cnpj = company.cnpj;
+            div.dataset.razaoSocial = company.razaoSocial;
+            companyNameResults.appendChild(div);
+        });
+    }
     
     /**
      * @functionality 309
@@ -991,7 +1068,7 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
         "Formulários e Declarações": ["Declaração do Empregador", "Declaração de Superveniência", "Declaração de Enquadramento", "Declaração de Desenquadramento", "Procuração", "Comprovante de Residência", "Termo de Concordância e Veracidade"]
     };
 
-    // (O restante do código, a partir daqui, está completo e sem alterações)
+    
     const statusRadios = document.querySelectorAll('input[name="status"]');
     const rejectedDocsSection = document.getElementById('rejected-docs-section');
     const generateBtn = document.getElementById('generateBtn');
@@ -1498,24 +1575,48 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
      * @description Aplica máscaras regex baseadas no tamanho (11 para CPF, 14 para CNPJ) e busca na DB.
      */
     cnpjInputForDb.addEventListener('input', (e) => {
-        let v = e.target.value.replace(/\D/g, '');
-        if (v.length <= 11) {
-            v = v.replace(/(\d{3})(\d)/, '$1.$2');
-            v = v.replace(/(\d{3})(\d)/, '$1.$2');
-            v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-        } else {
-            v = v.replace(/^(\d{2})(\d)/, '$1.$2');
-            v = v.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
-            v = v.replace(/\.(\d{3})(\d)/, '.$1/$2');
-            v = v.replace(/(\d{4})(\d)/, '$1-$2');
-        }
-        e.target.value = v;
+        e.target.value = formatDocument(e.target.value);
         resetFormFields(); 
         searchCnpj(e.target.value);
     });
 
     document.getElementById('importDbFile').addEventListener('change', importDatabase);
     document.getElementById('clearHistoryBtn').addEventListener('click', clearHistory);
+
+    // Listener para buscar por nome ao digitar
+    companyNameInputForDb.addEventListener('input', (e) => {
+        const searchTerm = e.target.value;
+        if (searchTerm.length === 0) {
+            companyNameResults.innerHTML = ''; // Limpa se o campo estiver vazio
+            cnpjStatusSpan.textContent = ''; // Limpa o status
+        } else if (searchTerm.length >= 5) {
+            cnpjStatusSpan.textContent = 'Buscando...'; // Indica busca
+            cnpjStatusSpan.className = 'text-gray-500';
+            searchCompanyByName(searchTerm);
+        }
+    });
+
+    // Listener para preencher CNPJ ao clicar no resultado do nome
+    companyNameResults.addEventListener('click', (e) => {
+        if (e.target.tagName === 'DIV') {
+            const cnpj = e.target.dataset.cnpj;
+            const razaoSocial = e.target.dataset.razaoSocial;
+
+            // Preenche os campos
+            companyNameInputForDb.value = razaoSocial;
+            cnpjInputForDb.value = formatDocument(cnpj);
+
+            // Atualiza o status
+            cnpjStatusSpan.textContent = 'Encontrado';
+            cnpjStatusSpan.className = 'text-green-600';
+
+            // Limpa os resultados
+            companyNameResults.innerHTML = '';
+            
+            // Reseta o resto do formulário (status, data, docs)
+            resetFormFields();
+        }
+    });
 
     // Formulário principal
     statusRadios.forEach(radio => radio.addEventListener('change', toggleRejectedDocsSection));

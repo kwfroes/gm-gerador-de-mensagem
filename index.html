@@ -41,9 +41,10 @@
                              <span id="cnpj-status" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold"></span>
                         </div>
                     </div>
-                     <div>
+                    <div class="relative">
                         <label for="companyName" class="block text-sm font-medium text-gray-700 mb-1">Razão Social / Nome</label>
-                        <input type="text" id="companyName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="Preenchido automaticamente...">
+                        <input type="text" id="companyName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="Digite o nome ou Razão Social">
+                        <div id="companyNameResults" class="absolute z-10 w-full bg-white border border-gray-300 rounded-b-lg shadow-lg max-h-60 overflow-y-auto"></div>
                     </div>
                     <div>
                         <label for="analysisDate" class="block text-sm font-medium text-gray-700 mb-1">Data da Análise</label>
