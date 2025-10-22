@@ -8,8 +8,8 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     const APP_AUTHOR = "Kevin Fróes";
     const APP_NAME = "Gerador de Mensagens";
-    const APP_VERSION = "2.8.1";
-    const APP_VERSION_DATE = "20/10/2025";
+    const APP_VERSION = "2.9.0";
+    const APP_VERSION_DATE = "22/10/2025";
 
     // --- VARIÁVEIS DE ESTADO ---
     let db;
@@ -935,7 +935,11 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
         if (parts.length >= 2) {
             const cnpj = parts[0].trim().replace(/\D/g, '');
             const razaoSocial = parts[1]?.trim();
-            if (cnpj && razaoSocial) return { cnpj, razaoSocial };
+            const dataCadastro = parts[2]?.trim() || '';
+            const tipoCadastro = parts[3]?.trim() || '';
+
+            if (cnpj && razaoSocial) 
+                return { cnpj, razaoSocial, dataCadastro, tipoCadastro };
         }
         return null;
     }
@@ -985,10 +989,29 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
         request.onsuccess = function(event) {
             if (request.result) {
                 companyNameInputForDb.value = request.result.razaoSocial;
+                registrationDateInput.value = request.result.dataCadastro || '--'; 
+
+                // 2. Preenche o tipo de cadastro (campo selecionável)
+                if (request.result.tipoCadastro) {
+                    const tipo = request.result.tipoCadastro.trim().toUpperCase();
+                    if (tipo === 'CRC') {
+                        registrationTypeInput.value = 'CRC';
+                    } else if (tipo === 'CRS') {
+                        registrationTypeInput.value = 'CRS';
+                    } else if (tipo === 'CANDIDATO') {
+                        registrationTypeInput.value = 'Candidato';
+                    } else {
+                        registrationTypeInput.value = 'CRC'; // Padrão se não reconhecer
+                    }
+                } else {
+                    registrationTypeInput.value = 'CRC'; // Padrão se não existir no DB
+                }
                 cnpjStatusSpan.textContent = 'Encontrado';
                 cnpjStatusSpan.className = 'text-green-600';
             } else {
                 companyNameInputForDb.value = '';
+                registrationDateInput.value = '--'; 
+                registrationTypeInput.value = 'CRC'; 
                 cnpjStatusSpan.textContent = 'Não encontrado';
                 cnpjStatusSpan.className = 'text-red-600';
             }
@@ -996,6 +1019,8 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
          request.onerror = function(event) {
              cnpjStatusSpan.textContent = 'Erro';
              cnpjStatusSpan.className = 'text-red-600';
+             registrationDateInput.value = '--'; 
+             registrationTypeInput.value = 'CRC'; 
          }
     }
 
@@ -1048,6 +1073,8 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
             div.textContent = company.razaoSocial;
             div.dataset.cnpj = company.cnpj;
             div.dataset.razaoSocial = company.razaoSocial;
+            div.dataset.dataCadastro = company.dataCadastro || ''; 
+            div.dataset.tipoCadastro = company.tipoCadastro || ''; 
             companyNameResults.appendChild(div);
         });
     }
@@ -1080,6 +1107,7 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
     const companyNameInput = document.getElementById('companyName');
     const analysisDateInput = document.getElementById('analysisDate');
     const registrationTypeInput = document.getElementById('registrationType');
+    const registrationDateInput = document.getElementById('registrationDate');
     const docCategoryInput = document.getElementById('docCategory');
     const docNameSelect = document.getElementById('docName');
     const customDocNameWrapper = document.getElementById('customDocNameWrapper');
@@ -1107,6 +1135,7 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
     function resetFormFields() {
         document.getElementById('statusDeferida').checked = true;
         registrationTypeInput.value = 'CRC';
+        registrationDateInput.value = '';
         const today = new Date().toISOString().split('T')[0];
         analysisDateInput.value = today;
         rejectedDocs = [];
@@ -1601,10 +1630,32 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
         if (e.target.tagName === 'DIV') {
             const cnpj = e.target.dataset.cnpj;
             const razaoSocial = e.target.dataset.razaoSocial;
+            const dataCadastro = e.target.dataset.dataCadastro; 
+            const tipoCadastro = e.target.dataset.tipoCadastro; 
 
-            // Preenche os campos
-            companyNameInputForDb.value = razaoSocial;
-            cnpjInputForDb.value = formatDocument(cnpj);
+        // Reseta o resto do formulário (status, data, docs)
+        resetFormFields();
+
+        // Preenche os campos
+        companyNameInputForDb.value = razaoSocial;
+        cnpjInputForDb.value = formatDocument(cnpj);
+        registrationDateInput.value = dataCadastro || '--'; 
+
+        // Lógica de mapeamento do Tipo de Cadastro (igual ao searchCnpj)
+        if (tipoCadastro) {
+            const tipo = tipoCadastro.trim().toUpperCase();
+            if (tipo === 'CRC') {
+                registrationTypeInput.value = 'CRC';
+            } else if (tipo === 'CRS') {
+                registrationTypeInput.value = 'CRS';
+            } else if (tipo === 'CANDIDATO') {
+                registrationTypeInput.value = 'Candidato';
+            } else {
+                registrationTypeInput.value = 'CRC'; // Padrão
+            }
+        } else {
+            registrationTypeInput.value = 'CRC'; // Padrão
+        }
 
             // Atualiza o status
             cnpjStatusSpan.textContent = 'Encontrado';
@@ -1613,8 +1664,7 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
             // Limpa os resultados
             companyNameResults.innerHTML = '';
             
-            // Reseta o resto do formulário (status, data, docs)
-            resetFormFields();
+
         }
     });
 
