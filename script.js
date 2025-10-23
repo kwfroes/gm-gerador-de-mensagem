@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     const APP_AUTHOR = "Kevin Fróes";
     const APP_NAME = "Gerador de Mensagens";
-    const APP_VERSION = "2.9.3";
+    const APP_VERSION = "2.9.4";
     const APP_VERSION_DATE = "23/10/2025";
 
     // --- VARIÁVEIS DE ESTADO ---
@@ -59,6 +59,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const historyEndDate = document.getElementById('historyEndDate');
     const filterHistoryBtn = document.getElementById('filterHistoryBtn');
     const clearHistoryFilterBtn = document.getElementById('clearHistoryFilterBtn');
+
+
+    // --- MODAL DE BACKUP ---
+    const backupReminderModal = document.getElementById('backupReminderModal');
+    const backupReminderPeriodSelect = document.getElementById('backupReminderPeriod');
+    const confirmBackupReminderBtn = document.getElementById('confirmBackupReminderBtn');
+    const cancelBackupReminderBtn = document.getElementById('cancelBackupReminderBtn');
+    const closeBackupReminderBtn = document.getElementById('closeBackupReminderBtn');
 
     // --- MODAL WPP ---
     const sendWppBtn = document.getElementById('sendWppBtn');
@@ -303,6 +311,79 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- LÓGICA DE HASH E VERIFICAÇÃO DE ATUALIZAÇÃO ---
 
     /**
+     * @functionality 209
+     * @category 2xx: Banco de Dados e Persistência
+     * @name Gerenciamento de Configurações de Backup Pessoal no Metadata
+     * @description Salva o período (ms) selecionado pelo usuário no metadata store.
+     */
+    function saveBackupReminderPeriod(periodMs) {
+        return new Promise((resolve, reject) => {
+            if (!db) return reject('DB not available');
+            const transaction = db.transaction(['metadata'], 'readwrite');
+            const store = transaction.objectStore('metadata');
+            const request = store.put({ id: 'backup_reminder_period', value: periodMs });
+            request.onsuccess = () => resolve();
+            request.onerror = (e) => reject(e.target.error);
+        });
+    }
+
+    /**
+     * @functionality 209
+     * @category 2xx: Banco de Dados e Persistência
+     * @name Gerenciamento de Configurações de Backup Pessoal no Metadata
+     * @description Recupera o período (ms) do metadata store. Padrão: Diariamente (86400000).
+     */
+    function getBackupReminderPeriod() {
+        return new Promise((resolve) => {
+            if (!db) return resolve(86400000); // Padrão
+            const transaction = db.transaction(['metadata'], 'readonly');
+            const store = transaction.objectStore('metadata');
+            const request = store.get('backup_reminder_period');
+            request.onsuccess = () => {
+                // Padrão é 'Diariamente' (86400000) se não estiver definido
+                resolve(request.result ? request.result.value : 86400000); 
+            };
+            request.onerror = () => resolve(86400000); // Padrão em caso de erro
+        });
+    }
+
+    /**
+     * @functionality 209
+     * @category 2xx: Banco de Dados e Persistência
+     * @name Gerenciamento de Configurações de Backup Pessoal no Metadata
+     * @description Salva o timestamp (Date.now()) do último backup pessoal realizado.
+     */
+    function updateLastPersonalBackupTimestamp(timestamp) {
+         return new Promise((resolve, reject) => {
+            if (!db) return reject('DB not available');
+            const transaction = db.transaction(['metadata'], 'readwrite');
+            const store = transaction.objectStore('metadata');
+            const request = store.put({ id: 'last_personal_backup', value: timestamp });
+            request.onsuccess = () => resolve();
+            request.onerror = (e) => reject(e.target.error);
+        });
+    }
+
+    /**
+     * @functionality 209
+     * @category 2xx: Banco de Dados e Persistência
+     * @name Gerenciamento de Configurações de Backup Pessoal no Metadata
+     * @description Recupera o timestamp do último backup pessoal. Padrão: 0.
+     */
+    function getLastPersonalBackupTimestamp() {
+         return new Promise((resolve) => {
+            if (!db) return resolve(0);
+            const transaction = db.transaction(['metadata'], 'readonly');
+            const store = transaction.objectStore('metadata');
+            const request = store.get('last_personal_backup');
+            request.onsuccess = () => resolve(request.result ? request.result.value : 0);
+            request.onerror = () => resolve(0);
+        });
+    }
+
+
+
+    /**
      * @functionality 102
      * @category 1xx: Criptografia e Segurança
      * @name Cálculo de Hash SHA-256 para Detecção de Mudanças em Backups
@@ -487,6 +568,32 @@ function updateAdminControlsState() {
         checkDbStatus('families', familyDbStatus, 'famílias');
 
         renderContactsList();
+        await checkForBackupReminder();
+    }
+
+    /**
+     * @functionality 504
+     * @category 5xx: Utilitários e Validações
+     * @name Verificação de Lembrete de Backup na Inicialização
+     * @description Compara o último backup pessoal com o período configurado e exibe o modal se vencido.
+     */
+    async function checkForBackupReminder() {
+        if (!encryptionKey) return; // Só verifica se estiver logado
+
+        try {
+            const periodMs = Number(await getBackupReminderPeriod());
+            if (periodMs === 0) return; // Usuário desativou os lembretes
+
+            const lastBackupTimestamp = await getLastPersonalBackupTimestamp();
+            const now = Date.now();
+
+            if ((lastBackupTimestamp + periodMs) < now) {
+                // Backup está vencido!
+                backupReminderModal.classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('Erro ao verificar lembrete de backup:', error);
+        }
     }
 
     /**
@@ -1759,7 +1866,22 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
      * @name Binding de Eventos para Modais com Fechamento por Clique Externo
      * @description Adiciona listeners para abrir/fechar modais (DB, histórico, export, senha) via classes Tailwind.
      */
-    openDbModalBtn.addEventListener('click', () => dbModal.classList.remove('hidden'));
+    openDbModalBtn.addEventListener('click', async () => {
+        // Carrega o valor salvo no select ao abrir o modal
+        try {
+            const savedPeriod = await getBackupReminderPeriod();
+            // Garante que o elemento existe antes de tentar definir o valor
+            if (backupReminderPeriodSelect) { 
+                backupReminderPeriodSelect.value = savedPeriod;
+            }
+        } catch (e) {
+            if (backupReminderPeriodSelect) {
+                backupReminderPeriodSelect.value = 86400000; // Padrão
+            }
+        }
+        dbModal.classList.remove('hidden');
+    });
+
     closeDbModalBtn.addEventListener('click', () => dbModal.classList.add('hidden'));
     dbModal.addEventListener('click', (e) => { if (e.target.id === 'dbModal') dbModal.classList.add('hidden'); });
     
@@ -1939,6 +2061,62 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
             removeRejectedDoc(index);
         }
     });
+
+    // --- LISTENERS DO LEMBRETE DE BACKUP E CONFIGURAÇÃO ---
+
+    // Salva o período imediatamente ao ser alterado no modal de DB
+    // Adiciona uma verificação para garantir que o elemento existe
+    if (backupReminderPeriodSelect) {
+        backupReminderPeriodSelect.addEventListener('change', async (e) => {
+            try {
+                await saveBackupReminderPeriod(Number(e.target.value));
+                showToast('Frequência do lembrete atualizada!', 'success');
+            } catch (error) {
+                showToast('Erro ao salvar a frequência.', 'error');
+            }
+        });
+    }
+
+    // Ações do modal de lembrete (adiciona verificações)
+    if (confirmBackupReminderBtn) {
+        confirmBackupReminderBtn.addEventListener('click', async () => {
+            const options = {
+                includeCompanies: false,
+                includeFamilies: false,
+                includeHistory: true,
+                includeContacts: true
+            };
+            
+            // 1. Inicia a exportação (que já exibe um toast)
+            await processExport(options); 
+            
+            // 2. Atualiza o timestamp do último backup
+            await updateLastPersonalBackupTimestamp(Date.now());
+            
+            // 3. Fecha o modal
+            backupReminderModal.classList.add('hidden');
+        });
+    }
+
+    if (cancelBackupReminderBtn) {
+        cancelBackupReminderBtn.addEventListener('click', () => {
+            backupReminderModal.classList.add('hidden');
+        });
+    }
+
+    if (closeBackupReminderBtn) {
+        closeBackupReminderBtn.addEventListener('click', () => {
+            backupReminderModal.classList.add('hidden');
+        });
+    }
+
+    if (backupReminderModal) {
+        backupReminderModal.addEventListener('click', (e) => {
+            if (e.target.id === 'backupReminderModal') {
+                backupReminderModal.classList.add('hidden');
+            }
+        });
+    }
     
     /**
      * @functionality 413
