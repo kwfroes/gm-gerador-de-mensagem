@@ -8,8 +8,8 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     const APP_AUTHOR = "Kevin Fróes";
     const APP_NAME = "Gerador de Mensagens";
-    const APP_VERSION = "2.9.0";
-    const APP_VERSION_DATE = "22/10/2025";
+    const APP_VERSION = "2.9.3";
+    const APP_VERSION_DATE = "23/10/2025";
 
     // --- VARIÁVEIS DE ESTADO ---
     let db;
@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function () {
      * @description Armazena referências a inputs, modais e botões em variáveis globais.
      */
     const dbName = "CafDatabase";
-    const dbVersion = 4;
+    const dbVersion = 5;
     const dbStatus = document.getElementById('db-status');
     const familyDbStatus = document.getElementById('family-db-status');
     const cnpjInputForDb = document.getElementById('cnpj');
@@ -59,6 +59,26 @@ document.addEventListener('DOMContentLoaded', function () {
     const historyEndDate = document.getElementById('historyEndDate');
     const filterHistoryBtn = document.getElementById('filterHistoryBtn');
     const clearHistoryFilterBtn = document.getElementById('clearHistoryFilterBtn');
+
+    // --- MODAL WPP ---
+    const sendWppBtn = document.getElementById('sendWppBtn');
+    const wppModal = document.getElementById('wppModal');
+    const closeWppModalBtn = document.getElementById('closeWppModalBtn');
+    const wppContactListContainer = document.getElementById('wppContactListContainer');
+    
+    // Elementos do Modal de DB para Contatos
+    const addContactBtn = document.getElementById('addContactBtn');
+    const contactsListContainer = document.getElementById('contactsListContainer');
+    const loadContactsCsvBtn = document.getElementById('loadContactsCsvBtn');
+    const exportContactsCsvBtn = document.getElementById('exportContactsCsvBtn');
+    const contactsCsvFileInput = document.getElementById('contactsCsvFileInput');
+    const contactsDbStatus = document.getElementById('contacts-db-status');
+    const modalcontactNameInput = document.getElementById('contactNameInput');
+    const modalcontactRoleInput = document.getElementById('contactRoleInput');
+    const contactPhoneInput = document.getElementById('contactPhoneInput');
+    const contactsModal = document.getElementById('contactsModal');
+    const openContactsModalBtn = document.getElementById('openContactsModalBtn');
+    const closeContactsModalBtn = document.getElementById('closeContactsModalBtn');
 
     // --- FUNÇÕES GERAIS E DE UTILIDADE ---
 
@@ -399,15 +419,20 @@ function updateAdminControlsState() {
             label.title = 'Opção disponível apenas no Modo Admin.';
         }
     });
+
+    const exportHistory = document.getElementById('exportHistory');
+    const exportContacts = document.getElementById('exportContacts');
     
     if (isAdmin) {
         exportCompanies.checked = true;
         exportFamilies.checked = true;
-        document.getElementById('exportHistory').checked = false;
+        exportHistory.checked = false;
+        exportContacts.checked = false;
     } else {
         exportCompanies.checked = false;
         exportFamilies.checked = false;
-        document.getElementById('exportHistory').checked = true;
+        exportHistory.checked = true;
+        exportContacts.checked = true;
     }
     
     // Controles de Upload de CSV
@@ -460,6 +485,8 @@ function updateAdminControlsState() {
         await checkForUpdates();
         checkDbStatus('companies', dbStatus, 'registros');
         checkDbStatus('families', familyDbStatus, 'famílias');
+
+        renderContactsList();
     }
 
     /**
@@ -482,6 +509,11 @@ function updateAdminControlsState() {
             if (!db.objectStoreNames.contains('history')) {
                 const historyStore = db.createObjectStore("history", { keyPath: "id", autoIncrement: true });
                 historyStore.createIndex("timestamp", "timestamp", { unique: false });
+            }
+
+            if (!db.objectStoreNames.contains('contacts')) {
+                const contactsStore = db.createObjectStore("contacts", { keyPath: "id", autoIncrement: true });
+                contactsStore.createIndex("name", "name", { unique: false });
             }
         };
 
@@ -647,7 +679,12 @@ function updateAdminControlsState() {
             const storesToExport = [];
             if (options.includeCompanies) storesToExport.push('companies');
             if (options.includeFamilies) storesToExport.push('families');
-            if (options.includeHistory) storesToExport.push('history');
+            if (options.includeHistory) {
+                storesToExport.push('history');
+            }
+            if (options.includeContacts) {
+                storesToExport.push('contacts');
+            }
             if (storesToExport.length === 0) {
                 showToast('Nenhum dado selecionado para exportar.', 'error');
                 return;
@@ -674,7 +711,7 @@ function updateAdminControlsState() {
             let filename = "backup.json";
             let toastMessage = 'Backup de sincronização exportado como "backup.json"!';
             
-            if (options.includeHistory) {
+            if (options.includeHistory || options.includeContacts) {
                 const date = new Date().toISOString().slice(0, 10);
                 filename = `full_backup_${date}.json`;
                 toastMessage = `Backup pessoal completo exportado como "${filename}"!`;
@@ -715,6 +752,7 @@ function updateAdminControlsState() {
                     showToast('Dados restaurados com sucesso!', 'success');
                     checkDbStatus('companies', dbStatus, 'registros');
                     checkDbStatus('families', familyDbStatus, 'famílias');
+                    renderContactsList();
                     resolve();
                 });
             };
@@ -922,7 +960,194 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
         };
     }
 
-    // --- LÓGICA PRINCIPAL DA APLICAÇÃO ---
+    // ---XX LÓGICA DE CONTATOS PESSOAIS XX---
+
+    /**
+     * @functionality 212
+     * @category 2xx: Banco de Dados e Persistência
+     * @name Renderização da Lista de Contatos Pessoais no Modal de DB
+     * @description Lê o store 'contacts' e popula a lista no dbModal com botões de exclusão.
+     */
+    async function renderContactsList() {
+        if (!db) return;
+        contactsListContainer.innerHTML = '<p class="text-gray-500 text-center">Carregando...</p>';
+
+        const transaction = db.transaction(['contacts'], 'readonly');
+        const store = transaction.objectStore('contacts');
+        const allContacts = await new Promise((resolve, reject) => {
+            store.getAll().onsuccess = e => resolve(e.target.result);
+            store.getAll().onerror = e => reject(e.target.error);
+        });
+
+        if (allContacts.length === 0) {
+            contactsListContainer.innerHTML = '<p class="text-sm text-gray-500 text-center">Nenhum contato cadastrado.</p>';
+            return;
+        }
+
+        contactsListContainer.innerHTML = '';
+        allContacts.forEach(contact => {
+            const div = document.createElement('div');
+            div.className = 'flex justify-between items-center bg-white p-2 rounded border text-sm';
+            div.innerHTML = `
+                <div>
+                    <p class="font-semibold text-gray-800">${escapeHtml(contact.name)}</p>
+                    <p class="text-xs text-gray-600">${escapeHtml(contact.role)} (${escapeHtml(contact.phone)})</p>
+                </div>
+                <button data-id="${contact.id}" class="delete-contact-btn text-red-500 hover:text-red-700 font-bold p-1 text-lg leading-none">&times;</button>
+            `;
+            contactsListContainer.appendChild(div);
+        });
+    }
+
+    /**
+     * @functionality 213
+     * @category 2xx: Banco de Dados e Persistência
+     * @name Adicionar Contato Pessoal
+     * @description Salva um novo contato no store 'contacts' a partir do formulário do modal.
+     */
+    function addContact() {
+        const name = modalcontactNameInput.value.trim();
+        const role = modalcontactRoleInput.value.trim();
+        let phone = contactPhoneInput.value.trim().replace(/\D/g, '');
+
+        if (!name || !phone) {
+            showToast('Nome e WhatsApp são obrigatórios.', 'error');
+            return;
+        }
+
+        if (phone.length <= 11) { // Ex: 719... ou 119...
+             showToast('Telefone inválido. Inclua o código do país (55).', 'error');
+             return;
+        }
+
+        const transaction = db.transaction(['contacts'], 'readwrite');
+        const store = transaction.objectStore('contacts');
+        store.put({ name, role, phone });
+
+        transaction.oncomplete = () => {
+            showToast('Contato adicionado!', 'success');
+            modalcontactNameInput.value = '';
+            modalcontactRoleInput.value = '';
+            contactPhoneInput.value = '';
+            renderContactsList();
+        };
+        transaction.onerror = () => showToast('Erro ao salvar contato.', 'error');
+    }
+
+    /**
+     * @functionality 214
+     * @category 2xx: Banco de Dados e Persistência
+     * @name Deletar Contato Pessoal
+     * @description Remove um contato do store 'contacts' por ID.
+     */
+    function deleteContact(id) {
+        if (!db || !id) return;
+        if (!confirm('Tem certeza que deseja remover este contato?')) return;
+        
+        const transaction = db.transaction(['contacts'], 'readwrite');
+        const store = transaction.objectStore('contacts');
+        store.delete(id);
+
+        transaction.oncomplete = () => {
+            showToast('Contato removido.', 'success');
+            renderContactsList();
+        };
+        transaction.onerror = () => showToast('Erro ao remover contato.', 'error');
+    }
+
+    /**
+     * @functionality 417
+     * @category 4xx: UI/UX e Interações
+     * @name Exportar CSV de Contatos Pessoais
+     * @description Gera e baixa um arquivo CSV a partir do store 'contacts'.
+     */
+    async function exportContactsCsv() {
+        if (!db) return;
+        const transaction = db.transaction(['contacts'], 'readonly');
+        const store = transaction.objectStore('contacts');
+        const allContacts = await new Promise((resolve, reject) => {
+            store.getAll().onsuccess = e => resolve(e.target.result);
+            store.getAll().onerror = e => reject(e.target.error);
+        });
+
+        let csvContent = "Nome;;Cargo;;Telefone\n";
+        allContacts.forEach(c => {
+            csvContent += `${c.name};;${c.role};;${c.phone}\n`;
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'contatos_pessoais_whatsapp.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('CSV de Contatos exportado!', 'success');
+    }
+
+    /**
+     * @functionality 314
+     * @category 3xx: Geração de Mensagens e Formulários
+     * @name Abrir Modal de Envio WhatsApp
+     * @description Popula o wppModal com contatos do store 'contacts'.
+     */
+    async function openWppModal() {
+        if (!db) {
+            showToast('Banco de dados não disponível.', 'error');
+            return;
+        }
+        const message = resultText.value;
+        if (!message) {
+            showToast('Gere uma mensagem antes de enviar.', 'error');
+            return;
+        }
+
+        wppContactListContainer.innerHTML = '<p class="text-gray-500 text-center">Carregando contatos...</p>';
+        const transaction = db.transaction(['contacts'], 'readonly');
+        const store = transaction.objectStore('contacts');
+        const allContacts = await new Promise((resolve, reject) => {
+            store.getAll().onsuccess = e => resolve(e.target.result);
+            store.getAll().onerror = e => reject(e.target.error);
+        });
+
+        if (allContacts.length === 0) {
+            wppContactListContainer.innerHTML = '<p class="text-center text-red-500">Nenhum contato pessoal cadastrado. Adicione contatos no menu "Gerenciar Base de Dados".</p>';
+        } else {
+            wppContactListContainer.innerHTML = '';
+            allContacts.forEach(contact => {
+                const button = document.createElement('button');
+                button.className = 'w-full text-left p-3 bg-gray-50 hover:bg-blue-100 rounded-lg transition';
+                button.dataset.phone = contact.phone;
+                button.innerHTML = `
+                    <p class="font-semibold text-blue-700">${escapeHtml(contact.name)}</p>
+                    <p class="text-sm text-gray-600">${escapeHtml(contact.role)}</p>
+                `;
+                wppContactListContainer.appendChild(button);
+            });
+        }
+        wppModal.classList.remove('hidden');
+    }
+
+    /**
+     * @functionality 315
+     * @category 3xx: Geração de Mensagens e Formulários
+     * @name Handler de Clique para Envio de WhatsApp
+     * @description Pega o telefone do data-attribute e abre o link wa.me.
+     */
+    function handleWppContactClick(event) {
+        const targetButton = event.target.closest('button');
+        if (!targetButton || !targetButton.dataset.phone) return;
+
+        const phone = targetButton.dataset.phone;
+        const message = resultText.value;
+        const encodedMessage = encodeURIComponent(message);
+        const wppUrl = `https://wa.me/${phone}?text=${encodedMessage}`;
+        
+        window.open(wppUrl, '_blank');
+        wppModal.classList.add('hidden');
+    }
+
+    // ---XX LÓGICA PRINCIPAL DA APLICAÇÃO XX---
 
     /**
      * @functionality 204
@@ -956,6 +1181,23 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
             const id = parts[0]?.trim();
             const description = parts[2]?.trim();
             if(id && description) return { id, description };
+        }
+        return null;
+    }
+
+    /**
+     * @functionality 205.5
+     * @category 2xx: Banco de Dados e Persistência
+     * @name Parsing de CSV para Contatos Pessoais
+     * @description Extrai nome, cargo e telefone de linhas CSV delimitadas por ';;'.
+     */
+    const contactsParser = (line) => {
+        const parts = line.split(';;');
+        if (parts.length >= 3) {
+            const name = parts[0]?.trim();
+            const role = parts[1]?.trim();
+            const phone = parts[2]?.trim().replace(/\D/g, ''); // Limpa o telefone
+            if(name && phone) return { name, role, phone };
         }
         return null;
     }
@@ -1582,7 +1824,8 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
         const options = {
             includeCompanies: document.getElementById('exportCompanies').checked,
             includeFamilies: document.getElementById('exportFamilies').checked,
-            includeHistory: document.getElementById('exportHistory').checked
+            includeHistory: document.getElementById('exportHistory').checked,
+            includeContacts: document.getElementById('exportContacts').checked
         };
         processExport(options);
         exportModal.classList.add('hidden');
@@ -1747,6 +1990,45 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
     });
     passwordForm.addEventListener('submit', handlePasswordSubmit);
     logoutBtn.addEventListener('click', handleLogout);
+
+    // Listeners do Modal de WhatsApp
+    sendWppBtn.addEventListener('click', openWppModal);
+    closeWppModalBtn.addEventListener('click', () => wppModal.classList.add('hidden'));
+    wppModal.addEventListener('click', (e) => { 
+        if (e.target.id === 'wppModal') wppModal.classList.add('hidden'); 
+    });
+    wppContactListContainer.addEventListener('click', handleWppContactClick);
+
+    // Listeners do Modal de Gerenciamento de Contatos (Abre/Fecha)
+    openContactsModalBtn.addEventListener('click', () => contactsModal.classList.remove('hidden'));
+    closeContactsModalBtn.addEventListener('click', () => contactsModal.classList.add('hidden'));
+    contactsModal.addEventListener('click', (e) => { 
+        if (e.target.id === 'contactsModal') contactsModal.classList.add('hidden'); 
+    });
+
+    // Listeners do Gerenciador de Contatos (no dbModal)
+    addContactBtn.addEventListener('click', addContact);
+    exportContactsCsvBtn.addEventListener('click', exportContactsCsv);
+
+    contactsListContainer.addEventListener('click', (e) => {
+        const deleteButton = e.target.closest('.delete-contact-btn');
+        if (deleteButton) {
+            const id = parseInt(deleteButton.dataset.id, 10);
+            deleteContact(id);
+        }
+    });
+
+    loadContactsCsvBtn.addEventListener('click', () => {
+        const file = contactsCsvFileInput.files[0];
+        if (!file) {
+            showToast('Selecione um arquivo CSV de contatos.', 'error');
+            return;
+        }
+        // Reusa a função loadCsvToDB
+        loadCsvToDB(file, 'contacts', contactsDbStatus, contactsParser);
+        // Recarrega a lista após a importação
+        setTimeout(renderContactsList, 1000); 
+    });
     
     // Inicialização
     /**
