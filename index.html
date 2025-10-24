@@ -189,11 +189,11 @@
         </main>
     </div>
 
-    <div id="dbModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-2xl relative">
+    <div id="dbModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-50 overflow-y-auto">
+            <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-2xl relative max-h-[90vh] flex flex-col">
                 <button id="closeDbModalBtn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-3xl font-light leading-none">&times;</button>
                 
-                <div id="dbModalContent" class="space-y-6">
+                <div id="dbModalContent" class="space-y-6 overflow-y-auto pr-2">
                     <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-gray-700">Base de Dados</h2>
                     
                     <p class="text-sm text-gray-600 -mt-4">Gerencie sua base de dados aqui: carregue arquivos CSV para CNPJs/CPFs e Famílias (delimitador ';;'), realize backup e restauração completa ou gerencie seus contatos do WhatsApp.</p>
@@ -280,7 +280,7 @@
         </div>
         </div>
     </div>
-    <div id="historyModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div id="historyModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
         <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-3xl relative max-h-[90vh] flex flex-col">
             <button id="closeHistoryModalBtn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-3xl font-light leading-none">&times;</button>
             <div class="flex justify-between items-center border-b pb-2">
@@ -307,7 +307,7 @@
                 <button id="clearHistoryFilterBtn" title="Limpar Filtros" class="bg-gray-200 text-gray-700 font-semibold p-2 rounded-md hover:bg-gray-300 transition">&#x21BA;</button>
             </div>
             </div>
-            <div id="historyListContainer" class="overflow-y-auto space-y-3 mt-4 pr-2">
+            <div id="historyListContainer" class="flex-1 overflow-y-auto space-y-3 mt-4 pr-2 min-h-0">
                 <p class="text-gray-500 text-center">Nenhum histórico encontrado.</p>
             </div>
         </div>
@@ -370,12 +370,12 @@
             <div id="wppContactListContainer" class="space-y-2 max-h-60 overflow-y-auto">
                 </div>
         </div> </div>
-        <div id="contactsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div id="contactsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
         <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-lg relative max-h-[90vh] flex flex-col">
             <button id="closeContactsModalBtn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-3xl font-light leading-none">&times;</button>
             <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-gray-700">Gerenciar Contatos Pessoais</h2>
             
-            <div class="overflow-y-auto pr-2">
+            <div class="flex-1 overflow-y-auto pr-2 min-h-0">
                 <section id="contacts-management-setup">
                     <div class="bg-gray-50 p-4 rounded-lg space-y-3">
                         <p class="text-xs text-gray-500 -mt-2 mb-3">Adicione/remova contatos para envio rápido via WhatsApp. Estes contatos são salvos no backup pessoal.</p>

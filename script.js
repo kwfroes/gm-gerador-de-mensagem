@@ -8,8 +8,8 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     const APP_AUTHOR = "Kevin Fróes";
     const APP_NAME = "Gerador de Mensagens";
-    const APP_VERSION = "2.9.4";
-    const APP_VERSION_DATE = "23/10/2025";
+    const APP_VERSION = "2.9.5";
+    const APP_VERSION_DATE = "24/10/2025";
 
     // --- VARIÁVEIS DE ESTADO ---
     let db;
@@ -2110,13 +2110,13 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
         });
     }
 
-    if (backupReminderModal) {
-        backupReminderModal.addEventListener('click', (e) => {
-            if (e.target.id === 'backupReminderModal') {
-                backupReminderModal.classList.add('hidden');
-            }
-        });
-    }
+    //if (backupReminderModal) {
+    //    backupReminderModal.addEventListener('click', (e) => {
+    //        if (e.target.id === 'backupReminderModal') {
+    //            backupReminderModal.classList.add('hidden');
+    //        }
+    //    });
+    //}
     
     /**
      * @functionality 413
