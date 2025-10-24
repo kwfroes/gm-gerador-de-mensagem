@@ -2110,13 +2110,13 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
         });
     }
 
-    if (backupReminderModal) {
-        backupReminderModal.addEventListener('click', (e) => {
-            if (e.target.id === 'backupReminderModal') {
-                backupReminderModal.classList.add('hidden');
-            }
-        });
-    }
+    //  if (backupReminderModal) {
+    //      backupReminderModal.addEventListener('click', (e) => {
+    //        if (e.target.id === 'backupReminderModal') {
+    //            backupReminderModal.classList.add('hidden');
+    //        }
+    //    });
+    //}
     
     /**
      * @functionality 413
@@ -2225,5 +2225,6 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
 
 
 });
+
 
 
