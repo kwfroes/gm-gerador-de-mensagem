@@ -2110,8 +2110,9 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
         });
     }
 
-    //if (backupReminderModal) {
-    //    backupReminderModal.addEventListener('click', (e) => {
+
+    //  if (backupReminderModal) {
+    //      backupReminderModal.addEventListener('click', (e) => {
     //        if (e.target.id === 'backupReminderModal') {
     //            backupReminderModal.classList.add('hidden');
     //        }
@@ -2225,5 +2226,6 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
 
 
 });
+
 
 
