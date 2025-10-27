@@ -8,8 +8,8 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     const APP_AUTHOR = "Kevin Fróes";
     const APP_NAME = "Gerador de Mensagens";
-    const APP_VERSION = "2.9.5";
-    const APP_VERSION_DATE = "24/10/2025";
+    const APP_VERSION = "3.0.3";
+    const APP_VERSION_DATE = "27/10/2025";
 
     // --- VARIÁVEIS DE ESTADO ---
     let db;
@@ -60,6 +60,18 @@ document.addEventListener('DOMContentLoaded', function () {
     const filterHistoryBtn = document.getElementById('filterHistoryBtn');
     const clearHistoryFilterBtn = document.getElementById('clearHistoryFilterBtn');
 
+    // --- ELEMENTOS DO DASHBOARD ---
+    const dashboardModal = document.getElementById('dashboardModal');
+    const openDashboardModalBtn = document.getElementById('openDashboardModalBtn');
+    const closeDashboardModalBtn = document.getElementById('closeDashboardModalBtn');
+    const dashboardPeriodFilter = document.getElementById('dashboardPeriodFilter');
+    const refreshDashboardBtn = document.getElementById('refreshDashboardBtn');
+    const statusChartCanvas = document.getElementById('statusChart');
+    const topDocsList = document.getElementById('topDocsList');
+    const topReasonsList = document.getElementById('topReasonsList');
+    const dashboardTotalCount = document.getElementById('dashboardTotalCount');
+    let statusChartInstance = null; // Para destruir o gráfico antigo
+
 
     // --- MODAL DE BACKUP ---
     const backupReminderModal = document.getElementById('backupReminderModal');
@@ -90,22 +102,106 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- FUNÇÕES GERAIS E DE UTILIDADE ---
 
-    /**
-     * @functionality 401
-     * @category 4xx: UI/UX e Interações
-     * @name Sistema de Notificações Toast com Transições CSS e Tipos Semânticos
-     * @description Exibe mensagens temporárias (sucesso/erro/info) no canto inferior direito.
-     */
-    function showToast(message, type = 'info') {
-        const toast = document.getElementById('toast');
-        toast.textContent = message;
-        toast.classList.remove('bg-green-600', 'bg-red-600', 'bg-black');
-        if (type === 'success') toast.classList.add('bg-green-600');
-        else if (type === 'error') toast.classList.add('bg-red-600');
-        else toast.classList.add('bg-black');
-        toast.classList.remove('opacity-0');
-        setTimeout(() => toast.classList.add('opacity-0'), 3000);
+/**
+ * @functionality 401 (Atualizada v2)
+ * @category 4xx: UI/UX e Interações
+ * @name Sistema de Notificações Toast Empilhadas com Animações e Close Manual
+ * @description Cria toasts dinâmicos em pilha. Duration=0 torna persistente com botão close; senão, auto-esconde.
+ */
+function showToast(message, type = 'info', duration = 3000) {
+    // Cria o container se não existir
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'fixed bottom-5 right-5 z-50 flex flex-col items-end space-y-2 pointer-events-none';
+        document.body.appendChild(container);
     }
+
+    // Limite de pilha (opcional: remove o mais antigo se >5)
+    if (container.children.length >= 5) {
+        hideToast(container.lastElementChild);
+    }
+
+    // Cria o elemento toast
+    const toast = document.createElement('div');
+    toast.className = `
+        relative bg-black text-white py-2 px-5 rounded-lg shadow-xl 
+        opacity-0 transition-all duration-300 ease-in-out transform translate-y-4
+        max-w-sm text-sm flex items-center justify-between
+    `;
+
+    // Cor por tipo
+    let bgClass = 'bg-black'; // info
+    if (type === 'success') bgClass = 'bg-green-600';
+    else if (type === 'error') bgClass = 'bg-red-600';
+    toast.classList.add(bgClass);
+
+    // Conteúdo principal + close button (só se duration=0 para persistente)
+    let closeBtn = '';
+    if (duration === 0) {
+        closeBtn = `
+            <button onclick="hideToast(this.parentElement); event.stopPropagation();" 
+                    class="ml-3 text-white hover:text-gray-300 text-sm font-bold absolute right-1 top-1/2 -translate-y-1/2">
+                ×
+            </button>
+        `;
+        // Ajusta padding para o botão
+        toast.classList.add('pr-6'); // Espaço para o ×
+    }
+
+    // Escape e innerHTML
+    toast.innerHTML = `
+        <span>${escapeHtml(message)}</span>
+        ${closeBtn}
+    `;
+
+    // Insere no topo
+    container.insertBefore(toast, container.firstChild);
+
+    // Anima entrada
+    requestAnimationFrame(() => {
+        toast.classList.remove('opacity-0', 'translate-y-4');
+        toast.classList.add('opacity-100', 'translate-y-0');
+    });
+
+    // Auto-remoção: Se duration=0, não auto-esconde (usa close manual). Senão, esconde após duration (mínimo 2000ms)
+    const effectiveDuration = (duration === 0) ? 0 : Math.max(duration, 2000);
+    if (effectiveDuration > 0) {
+        setTimeout(() => {
+            toast.classList.remove('opacity-100', 'translate-y-0');
+            toast.classList.add('opacity-0', 'translate-y-4');
+            setTimeout(() => {
+                if (toast.parentNode) container.removeChild(toast);
+            }, 300);
+        }, effectiveDuration);
+    }
+}
+
+/**
+ * @functionality 401.5
+ * @category 4xx: UI/UX e Interações
+ * @name Esconde Toast Específico ou Todos Manualmente
+ * @description Força fade-out e remoção de um toast pelo elemento ou todos no container.
+ */
+function hideToast(toastElement = null) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    if (toastElement) {
+        // Esconde um específico
+        toastElement.classList.remove('opacity-100', 'translate-y-0');
+        toastElement.classList.add('opacity-0', 'translate-y-4');
+        setTimeout(() => {
+            if (toastElement.parentNode) {
+                container.removeChild(toastElement);
+            }
+        }, 300);
+    } else {
+        // Esconde todos (útil para cleanup)
+        Array.from(container.children).forEach(toast => hideToast(toast));
+    }
+}
     
     /**
      * @functionality 416
@@ -461,9 +557,9 @@ document.addEventListener('DOMContentLoaded', function () {
             
             if (remoteHash !== localHash) {
                 if(localHash === null){
-                    showToast('Base de dados inicial encontrada. Carregando...', 'info');
+                    showToast('Base de dados inicial encontrada. Carregando...', 'info', 8000);
                 } else {
-                    showToast('Nova base de dados encontrada. Atualizando...', 'info');
+                    showToast('Nova base de dados encontrada. Atualizando...', 'info', 8000);
                 }
                 const data = JSON.parse(jsonText);
                 await processImportData(data, remoteHash);
@@ -563,12 +659,23 @@ function updateAdminControlsState() {
      * @description Chama checkForUpdates e checkDbStatus após login ou bootstrapping.
      */
     async function initializeAppLogic() {
+        try {
         await checkForUpdates();
         checkDbStatus('companies', dbStatus, 'registros');
         checkDbStatus('families', familyDbStatus, 'famílias');
 
         renderContactsList();
         await checkForBackupReminder();
+
+        showToast('Base de dados carregada!', 'success');
+    
+        } catch (error) {
+            // Se checkForUpdates ou outro passo falhar, o erro já foi
+            // mostrado em um toast. Vamos garantir que o toast de erro apareça.
+            hideToast(); // Esconde o "Carregando..." se ainda estiver lá
+            showToast('Falha ao carregar a base de dados.', 'error');
+            console.error("Erro em initializeAppLogic:", error);
+        }
     }
 
     /**
@@ -629,11 +736,25 @@ function updateAdminControlsState() {
 
             encryptionKey = await getStoredKey();
 
-            if (encryptionKey) {
+        if (encryptionKey) {
                 // --- ESTÁ LOGADO ---
                 logoutBtn.classList.remove('hidden');
                 loginBtn.classList.add('hidden');
-                initializeAppLogic();
+                
+                // 1. Mostra o toast persistente (duração 0)
+                showToast('Carregando base de dados...', 'info', 8000);
+                
+                try {
+                    // 2. Aguarda a inicialização (que vai lidar com os toasts)
+                    await initializeAppLogic(); 
+                } 
+                catch (error) {
+                    // Este catch é para erros no PRÓPRIO initializeAppLogic
+                    hideToast(); // Esconde o "Carregando..."
+                    showToast('Erro crítico na inicialização.', 'error');
+                    console.error("Erro fatal em initDb:", error);
+                }
+
             } else {
                 // --- NÃO ESTÁ LOGADO ---
                 logoutBtn.classList.add('hidden');
@@ -944,85 +1065,107 @@ function updateAdminControlsState() {
      * @description Lista itens com botões copy/delete/expand, usando transições CSS para conteúdo oculto.
      */
 
-async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilter = '') {
-    const container = document.getElementById('historyListContainer');
-    container.innerHTML = '<p class="text-gray-500 text-center">Carregando histórico...</p>';
-    if (!db) {
-        container.innerHTML = '<p class="text-red-500 text-center">Banco de dados não disponível.</p>';
-        return;
-    }
+    const svgIconCopy = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="w-4 h-4">
+        <rect x="4" y="8" width="12" height="12" rx="1" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M8 6V5C8 4.44772 8.44772 4 9 4H19C19.5523 4 20 4.44772 20 5V15C20 15.5523 19.5523 16 19 16H18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2 2"/>
+    </svg>`;
+    
+    const svgIconExpand = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4" fill="currentColor">
+        <path d="M12 5.83L15.17 9l1.41-1.41L12 3 7.41 7.59 8.83 9 12 5.83zm0 12.34L8.83 15l-1.41 1.41L12 21l4.59-4.59L15.17 15 12 18.17z"/>
+    </svg>`;
+    
+    const svgIconCollapse = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4" fill="currentColor">
+        <path d="M7.41 18.59L8.83 20 12 16.83 15.17 20l1.41-1.41L12 14l-4.59 4.59zm9.18-13.18L15.17 4 12 7.17 8.83 4 7.41 5.41 12 10l4.59-4.59z"/>
+    </svg>`;
 
-    const transaction = db.transaction(['history'], 'readonly');
-    const store = transaction.objectStore('history');
-    const allRecords = await new Promise((resolve, reject) => {
-        const request = store.getAll();
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
 
-    // --- LÓGICA DE FILTRAGEM (NOVO) ---
-    let filteredRecords = allRecords;
+    async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilter = '') {
+        const container = document.getElementById('historyListContainer');
+        container.innerHTML = '<p class="text-gray-500 text-center">Carregando histórico...</p>';
+        if (!db) {
+            container.innerHTML = '<p class="text-red-500 text-center">Banco de dados não disponível.</p>';
+            return;
+        }
 
-    // Filtro por CNPJ/CPF
-    if (cnpjFilter) {
-        const cleanedCnpjFilter = cnpjFilter.replace(/\D/g, '');
-        filteredRecords = filteredRecords.filter(item => {
-            const cleanedItemCnpj = item.cnpj.replace(/\D/g, '');
-            return cleanedItemCnpj.includes(cleanedCnpjFilter);
+        const transaction = db.transaction(['history'], 'readonly');
+        const store = transaction.objectStore('history');
+        const allRecords = await new Promise((resolve, reject) => {
+            const request = store.getAll();
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
         });
-    }
 
-    // Filtro por Data Inicial
-    if (startDateFilter) {
-        const parts = startDateFilter.split('-'); // Corrige o bug do fuso horário (YYYY-MM-DD)
-        const startDate = new Date(parts[0], parts[1] - 1, parts[2]); // Cria a data em fuso local
-        startDate.setHours(0, 0, 0, 0); // Considera o início do dia
-        filteredRecords = filteredRecords.filter(item => new Date(item.timestamp) >= startDate);
-    }
+        // --- LÓGICA DE FILTRAGEM (NOVO) ---
+        let filteredRecords = allRecords;
 
-    // Filtro por Data Final
-    if (endDateFilter) {
-        const parts = endDateFilter.split('-'); // Corrige o bug do fuso horário (YYYY-MM-DD)
-        const endDate = new Date(parts[0], parts[1] - 1, parts[2]); // Cria a data em fuso local
-        endDate.setHours(23, 59, 59, 999); // Considera o fim do dia
-        filteredRecords = filteredRecords.filter(item => new Date(item.timestamp) <= endDate);
-    }
+        // Filtro por CNPJ/CPF
+        if (cnpjFilter) {
+            const cleanedCnpjFilter = cnpjFilter.replace(/\D/g, '');
+            filteredRecords = filteredRecords.filter(item => {
+                const cleanedItemCnpj = item.cnpj.replace(/\D/g, '');
+                return cleanedItemCnpj.includes(cleanedCnpjFilter);
+            });
+        }
 
-    // --- FIM DA LÓGICA DE FILTRAGEM ---
+        // Filtro por Data Inicial
+        if (startDateFilter) {
+            const parts = startDateFilter.split('-'); // Corrige o bug do fuso horário (YYYY-MM-DD)
+            const startDate = new Date(parts[0], parts[1] - 1, parts[2]); // Cria a data em fuso local
+            startDate.setHours(0, 0, 0, 0); // Considera o início do dia
+            filteredRecords = filteredRecords.filter(item => new Date(item.timestamp) >= startDate);
+        }
+
+        // Filtro por Data Final
+        if (endDateFilter) {
+            const parts = endDateFilter.split('-'); // Corrige o bug do fuso horário (YYYY-MM-DD)
+            const endDate = new Date(parts[0], parts[1] - 1, parts[2]); // Cria a data em fuso local
+            endDate.setHours(23, 59, 59, 999); // Considera o fim do dia
+            filteredRecords = filteredRecords.filter(item => new Date(item.timestamp) <= endDate);
+        }
+
+        // --- FIM DA LÓGICA DE FILTRAGEM ---
 
 
-    if (filteredRecords.length === 0) {
-        container.innerHTML = '<p class="text-gray-500 text-center">Nenhum registro encontrado para os filtros aplicados.</p>';
-        return;
-    }
+        if (filteredRecords.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 text-center">Nenhum registro encontrado para os filtros aplicados.</p>';
+            return;
+        }
 
-    container.innerHTML = '';
-    // Renderiza os registros JÁ FILTRADOS
-    filteredRecords.reverse().forEach(item => {
-        const date = new Date(item.timestamp);
-        const formattedDate = date.toLocaleString('pt-BR');
-        const element = document.createElement('div');
-        element.className = 'border rounded-lg bg-white shadow-sm overflow-hidden';
-        element.innerHTML = `
-            <div class="p-3 flex justify-between items-center bg-gray-50 border-b">
-                <div class="flex-grow">
-                    <p class="font-bold text-blue-700">${escapeHtml(item.companyName)}</p>
-                    <p class="text-sm text-gray-600">${escapeHtml(item.cnpj)}</p>
-                    <p class="text-xs text-gray-400 mt-1">Gerado em: ${formattedDate}</p>
+        container.innerHTML = '';
+        // Renderiza os registros JÁ FILTRADOS
+        filteredRecords.reverse().forEach(item => {
+            const date = new Date(item.timestamp);
+            const formattedDate = date.toLocaleString('pt-BR');
+            const element = document.createElement('div');
+            element.className = 'border rounded-lg bg-white shadow-sm overflow-hidden';
+            element.innerHTML = `
+                <div class="p-3 flex justify-between items-center bg-gray-50 border-b">
+                    <div class="flex-grow">
+                        <p class="font-bold text-blue-700">${escapeHtml(item.companyName)}</p>
+                        <p class="text-sm text-gray-600">${escapeHtml(item.cnpj)}</p>
+                        <p class="text-xs text-gray-400 mt-1">Gerado em: ${formattedDate}</p>
+                    </div>
+
+                    <div class="flex items-center space-x-2 ml-2">
+                        <button data-id="${item.id}" class="delete-history-btn text-red-500 hover:text-red-700 font-bold p-1 text-lg leading-none">&times;</button>
+                        
+                        <button data-message="${encodeURIComponent(item.message)}" title="Copiar" class="copy-history-btn bg-gray-200 text-gray-700 p-2 rounded-lg hover:bg-gray-300 transition">
+                            ${svgIconCopy}
+                        </button>
+                        
+                        <button title="Expandir" class="expand-history-btn text-blue-600 hover:bg-blue-100 rounded-lg p-2 transition">
+                            ${svgIconExpand}
+                        </button>
                 </div>
-                <div class="flex items-center space-x-2 ml-2">
-                    <button data-id="${item.id}" class="delete-history-btn text-red-500 hover:text-red-700 font-bold p-1 text-lg leading-none">&times;</button>
-                    <button data-message="${encodeURIComponent(item.message)}" class="copy-history-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-lg hover:bg-gray-300 transition text-xs">Copiar</button>
-                    <button class="expand-history-btn text-blue-600 font-semibold text-xs py-1 px-3">Expandir</button>
+
                 </div>
-            </div>
-            <div class="history-message-content" style="max-height: 0; transition: max-height 0.3s ease-out;">
-                <pre class="p-4 text-xs text-gray-800 whitespace-pre-wrap font-sans">${escapeHtml(item.message)}</pre>
-            </div>
-        `;
-        container.appendChild(element);
-    });
-    }
+                <div class="history-message-content" style="max-height: 0; transition: max-height 0.3s ease-out;">
+                    <pre class="p-4 text-xs text-gray-800 whitespace-pre-wrap font-sans">${escapeHtml(item.message)}</pre>
+                </div>
+            `;
+            container.appendChild(element);
+        });
+        }
 
     /**
      * @functionality 211
@@ -1066,6 +1209,228 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
             showToast('Erro ao remover item.', 'error');
         };
     }
+
+    // --- LÓGICA DO DASHBOARD ---
+
+    /**
+     * @functionality 600
+     * @category 6xx: Dashboard e Análises
+     * @name Função Principal de Renderização do Dashboard
+     * @description Orquestra a busca, processamento e renderização dos dados.
+     */
+    async function renderDashboard() {
+        if (!db || !encryptionKey) {
+            showToast('Banco de dados não disponível ou não logado.', 'error');
+            return;
+        }
+        
+        // Mostra feedback de carregamento
+        topDocsList.innerHTML = '<p class="text-gray-500 text-center">Processando...</p>';
+        topReasonsList.innerHTML = '<p class="text-gray-500 text-center">Processando...</p>';
+
+        try {
+            const period = dashboardPeriodFilter.value;
+            const historyItems = await loadHistoryForDashboard(period);
+            dashboardTotalCount.textContent = historyItems.length;
+            if (historyItems.length === 0) {
+                 topDocsList.innerHTML = '<p class="text-gray-500 text-center">Nenhum dado encontrado.</p>';
+                 topReasonsList.innerHTML = '<p class="text-gray-500 text-center">Nenhum dado encontrado.</p>';
+                 if (statusChartInstance) statusChartInstance.destroy();
+                 return;
+            }
+
+            const stats = processHistoryData(historyItems);
+            
+            renderStatusChart(stats.statusCounts);
+            renderTopList(topDocsList, stats.docCounts, "Nenhum documento indeferido registrado.");
+            renderTopList(topReasonsList, stats.reasonCounts, "Nenhum motivo de indeferimento registrado.");
+
+        } catch (error) {
+            console.error("Erro ao renderizar dashboard:", error);
+            showToast("Erro ao processar dados do dashboard.", 'error');
+        }
+    }
+
+    /**
+     * @functionality 601
+     * @category 6xx: Dashboard e Análises
+     * @name Carregamento de Dados do Histórico com Filtro
+     * @description Busca no IndexedDB usando cursor e filtros de período/limite.
+     */
+    function loadHistoryForDashboard(period = 'all') {
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(['history'], 'readonly');
+            const store = transaction.objectStore('history');
+            const index = store.index('timestamp'); // Usa o índice de timestamp
+            
+            let range = null;
+            if (period === 'month') {
+                const oneMonthAgo = new Date();
+                oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+                range = IDBKeyRange.lowerBound(oneMonthAgo.toISOString());
+            }
+
+            const request = index.openCursor(range, 'prev'); // 'prev' para pegar os mais recentes
+            const results = [];
+            const limit = 1000;
+
+            request.onsuccess = (event) => {
+                const cursor = event.target.result;
+                if (cursor && results.length < limit) {
+                    results.push(cursor.value);
+                    cursor.continue();
+                } else {
+                    resolve(results); // Retorna os dados (limitados a 1000 ou pelo período)
+                }
+            };
+            request.onerror = (event) => reject(event.target.error);
+        });
+    }
+
+    /**
+     * @functionality 602
+     * @category 6xx: Dashboard e Análises
+     * @name Processamento e Agregação de Dados do Histórico
+     * @description Processa o array de histórico, com fallback para dados antigos.
+     */
+    function processHistoryData(historyItems) {
+        const statusCounts = new Map();
+        const docCounts = new Map();
+        const reasonCounts = new Map();
+
+        const statusRegex = /foi analisada e \*(.*?)\*/; // Fallback para dados antigos
+
+        historyItems.forEach(item => {
+            // 1. Processar Status (com fallback)
+            let status = item.status;
+            if (!status && item.message) {
+                const match = item.message.match(statusRegex);
+                if (match && match[1]) {
+                    status = match[1];
+                }
+            }
+            if (status) {
+                statusCounts.set(status, (statusCounts.get(status) || 0) + 1);
+            }
+
+            // 2. Processar Documentos e Motivos (APENAS dados novos)
+            if (item.rejectedDocs && Array.isArray(item.rejectedDocs)) {
+                item.rejectedDocs.forEach(doc => {
+                    // Contar Documentos
+                    let docName = (doc.name === 'Sócio' && doc.socioName) ? `Sócio: ${doc.socioName}` : doc.name;
+                    docCounts.set(docName, (docCounts.get(docName) || 0) + 1);
+                    
+                    // Contar Motivos
+                    if (doc.reason) {
+                        reasonCounts.set(doc.reason, (reasonCounts.get(doc.reason) || 0) + 1);
+                    }
+                });
+            }
+        });
+
+        // Helper para ordenar Map e pegar Top 5
+        const sortMap = (map) => {
+            return [...map.entries()]
+                .sort((a, b) => b[1] - a[1]) // Ordena por contagem (descendente)
+                .slice(0, 5); // Pega o Top 5
+        };
+
+        return {
+            statusCounts: new Map([...statusCounts.entries()].sort((a, b) => b[1] - a[1])),
+            docCounts: sortMap(docCounts),
+            reasonCounts: sortMap(reasonCounts)
+        };
+    }
+    /**
+     * @functionality 603
+     * @category 6xx: Dashboard e Análises
+     * @name Renderização do Gráfico de Pizza (Chart.js)
+     * @description Cria ou atualiza a instância do gráfico de status.
+     */
+    function renderStatusChart(statusData) {
+        const ctx = statusChartCanvas.getContext('2d');
+        
+        // Destrói o gráfico anterior, se existir (essencial para "Atualizar")
+        if (statusChartInstance) {
+            statusChartInstance.destroy();
+        }
+
+        // Mapeamento de cores (pode ser expandido)
+        const statusColors = {
+            'Deferida': 'rgba(34, 139, 34, 0.7)', // Verde
+            'Indeferida': 'rgba(220, 20, 60, 0.7)', // Vermelho
+            'Deferida Parcial': 'rgba(255, 165, 0, 0.7)', // Laranja
+            'Pendente de Envio': 'rgba(100, 149, 237, 0.7)', // Azul
+            'Pendente do Termo': 'rgba(218, 165, 32, 0.7)', // Dourado
+            'default': 'rgba(128, 128, 128, 0.7)' // Cinza
+        };
+
+        const labels = [...statusData.keys()];
+        const data = [...statusData.values()];
+        const backgroundColors = labels.map(label => statusColors[label] || statusColors.default);
+
+        statusChartInstance = new Chart(ctx, {
+            type: 'pie', // Tipo 'pie' (Pizza)
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '# de Análises',
+                    data: data,
+                    backgroundColor: backgroundColors,
+                    borderColor: backgroundColors.map(c => c.replace('0.7', '1')),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                let value = context.raw || 0;
+                                let total = context.chart.getDatasetMeta(0).total;
+                                let percentage = ((value / total) * 100).toFixed(1) + '%';
+                                return `${label}: ${value} (${percentage})`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * @functionality 604
+     * @category 6xx: Dashboard e Análises
+     * @name Renderização das Listas "Top 5"
+     * @description Popula o HTML das listas de documentos e motivos.
+     */
+    function renderTopList(container, data, emptyMessage) {
+        if (data.length === 0) {
+            container.innerHTML = `<p class="text-gray-500 text-center">${emptyMessage}</p>`;
+            return;
+        }
+
+        container.innerHTML = ''; // Limpa o container
+        const ol = document.createElement('ol');
+        ol.className = 'list-decimal list-inside space-y-2';
+
+        data.forEach(([name, count]) => {
+            const li = document.createElement('li');
+            li.className = 'text-sm text-gray-800 bg-white p-2 border-l-4 border-blue-500 rounded-r-md';
+            li.innerHTML = `
+                <span class="font-semibold text-blue-700">${count}x</span> - ${escapeHtml(name)}
+            `;
+            ol.appendChild(li);
+        });
+        container.appendChild(ol);
+    }
+    
+    // --- FIM DA LÓGICA DO DASHBOARD ---
 
     // ---XX LÓGICA DE CONTATOS PESSOAIS XX---
 
@@ -1834,7 +2199,13 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
             cnpj: cnpj,
             companyName: companyName,
             message: message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+
+            // --- Variávais para dash ---
+            status: status,
+            rejectedDocs: rejectedDocs,
+            registrationType: registrationType
+            // ---
         };
         saveMessageToHistory(messageData);
         showToast('Mensagem gerada e salva no histórico!', 'success');
@@ -2062,6 +2433,7 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
         }
     });
 
+
     // --- LISTENERS DO LEMBRETE DE BACKUP E CONFIGURAÇÃO ---
 
     // Salva o período imediatamente ao ser alterado no modal de DB
@@ -2129,26 +2501,39 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
      * @description Alterna max-height via CSS para animação suave.
      */
     document.getElementById('historyListContainer').addEventListener('click', function(e) {
-        const target = e.target;
-        if (target.classList.contains('copy-history-btn')) {
-            const message = decodeURIComponent(target.dataset.message);
+        // Tenta encontrar um botão de "Copiar"
+        const copyButton = e.target.closest('.copy-history-btn');
+        if (copyButton) {
+            const message = decodeURIComponent(copyButton.dataset.message);
             copyToClipboard(message);
-        } else if (target.classList.contains('delete-history-btn')) {
-            const id = parseInt(target.dataset.id, 10);
-            deleteHistoryItem(id);
-        } else if (target.classList.contains('expand-history-btn')) {
-            const content = target.closest('.border').querySelector('.history-message-content');
-            
-        // Verifica se está recolhido (maxHeight é '0px', nulo ou vazio)
-        if (!content.style.maxHeight || content.style.maxHeight === '0px') {
-            // Se está recolhido, expande
-            content.style.maxHeight = content.scrollHeight + "px";
-            target.textContent = 'Recolher';
-        } else {
-            // Se está expandido, recolhe
-            content.style.maxHeight = null;
-            target.textContent = 'Expandir';
+            return; // Encontrou, não faz mais nada
         }
+
+        // Tenta encontrar um botão de "Deletar"
+        const deleteButton = e.target.closest('.delete-history-btn');
+        if (deleteButton) {
+            const id = parseInt(deleteButton.dataset.id, 10);
+            deleteHistoryItem(id);
+            return; // Encontrou, não faz mais nada
+        }
+
+        // Tenta encontrar um botão de "Expandir/Recolher"
+        const expandButton = e.target.closest('.expand-history-btn');
+        if (expandButton) {
+            const content = expandButton.closest('.border').querySelector('.history-message-content');
+            
+            if (!content.style.maxHeight || content.style.maxHeight === '0px') {
+                // Se está recolhido, expande
+                content.style.maxHeight = content.scrollHeight + "px";
+                expandButton.innerHTML = svgIconCollapse; // Muda o SVG
+                expandButton.title = "Recolher"; // Muda o title
+            } else {
+                // Se está expandido, recolhe
+                content.style.maxHeight = null;
+                expandButton.innerHTML = svgIconExpand; // Muda o SVG
+                expandButton.title = "Expandir"; // Muda o title
+            }
+            return; // Encontrou, não faz mais nada
         }
         });
 
@@ -2208,6 +2593,33 @@ async function renderHistory(cnpjFilter = '', startDateFilter = '', endDateFilte
         // Recarrega a lista após a importação
         setTimeout(renderContactsList, 1000); 
     });
+
+    // --- LISTENERS DO DASHBOARD (NOVO) ---
+    openDashboardModalBtn.addEventListener('click', () => {
+        dashboardModal.classList.remove('hidden');
+        renderDashboard(); // Renderiza ao abrir
+    });
+    
+    closeDashboardModalBtn.addEventListener('click', () => {
+        dashboardModal.classList.add('hidden');
+        // Destrói o gráfico para liberar memória
+        if (statusChartInstance) {
+            statusChartInstance.destroy();
+            statusChartInstance = null;
+        }
+    });
+    
+    dashboardModal.addEventListener('click', (e) => { 
+        if (e.target.id === 'dashboardModal') {
+            dashboardModal.classList.add('hidden');
+            if (statusChartInstance) {
+                statusChartInstance.destroy();
+                statusChartInstance = null;
+            }
+        }
+    });
+
+    refreshDashboardBtn.addEventListener('click', renderDashboard);
     
     // Inicialização
     /**
