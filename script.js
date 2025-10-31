@@ -1702,11 +1702,12 @@ function updateAdminControlsState() {
 
         request.onsuccess = function(event) {
             if (request.result) {
+                // 1. Preenche os dados básicos da empresa (sempre que encontrar)
                 companyNameInputForDb.value = request.result.razaoSocial;
                 registrationDateInput.value = request.result.dataCadastro || '--'; 
 
-                // 2. Preenche o tipo de cadastro (campo selecionável)
-                if (request.result.tipoCadastro) {
+                // 2. Verifica se TEM um tipo de cadastro (CRC, CRS, etc.)
+                if (request.result.tipoCadastro && request.result.tipoCadastro.toLowerCase() !== 'null') {
                     const tipo = request.result.tipoCadastro.trim().toUpperCase();
                     if (tipo === 'CRC') {
                         registrationTypeInput.value = 'CRC';
@@ -1717,12 +1718,23 @@ function updateAdminControlsState() {
                     } else {
                         registrationTypeInput.value = 'CRC'; // Padrão se não reconhecer
                     }
+                    
+                    // Status VERDE (Cadastro completo)
+                    cnpjStatusSpan.textContent = 'Encontrado';
+                    cnpjStatusSpan.className = 'text-green-600';
+
                 } else {
-                    registrationTypeInput.value = 'CRC'; // Padrão se não existir no DB
+                    // 3. NÃO TEM tipo de cadastro (o campo é nulo ou vazio)
+                    
+                    // Define o tipo de cadastro como padrão no formulário
+                    registrationTypeInput.value = 'CRC'; 
+                    
+                    // Status AMARELO (Conforme solicitado)
+                    cnpjStatusSpan.textContent = 'Encontrado (Sem cadastro)';
+                    cnpjStatusSpan.className = 'text-yellow-600'; // Tailwind para amarelo
                 }
-                cnpjStatusSpan.textContent = 'Encontrado';
-                cnpjStatusSpan.className = 'text-green-600';
             } else {
+                // 4. Bloco 'Não encontrado' (permanece o mesmo)
                 companyNameInputForDb.value = '';
                 registrationDateInput.value = '--'; 
                 registrationTypeInput.value = 'CRC'; 
