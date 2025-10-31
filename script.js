@@ -8,8 +8,8 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     const APP_AUTHOR = "Kevin Fróes";
     const APP_NAME = "Gerador de Mensagens";
-    const APP_VERSION = "3.0.3";
-    const APP_VERSION_DATE = "27/10/2025";
+    const APP_VERSION = "3.0.4";
+    const APP_VERSION_DATE = "31/10/2025";
 
     // --- VARIÁVEIS DE ESTADO ---
     let db;
@@ -2650,6 +2650,7 @@ function updateAdminControlsState() {
 
 
 });
+
 
 
 
